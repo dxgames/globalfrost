@@ -3,7 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <title>Global Frost 1.0 - DX GAMES</title>
+    <meta name="description" content="¡La primera nevada mundial ha comenzado! Lidera a tu escuadrón de pingüinos tácticos en batallas explosivas sobre icebergs flotantes. Artillería pesada y caos helado.">
+    <meta property="og:title" content="Global Frost 1.0">
+    <meta property="og:description" content="¡La primera nevada mundial ha comenzado! ¿Podrás mantenerte a flote o te convertirás en granizado? Juega ahora.">
+    <meta property="og:image" content="https://i.postimg.cc/NF7jKGGw/previsualizacion.jpg">
+    <meta property="og:type" content="website">
+    
+    <link rel="icon" href="https://i.postimg.cc/8cqj6XMH/icono.png">
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/8cqj6XMH/icono.png">
+
     <style>
         body { 
             margin: 0; overflow: hidden; background: #051025; 
@@ -16,6 +26,16 @@
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         
         .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(5,10,20,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; z-index: 100; transition: opacity 0.5s; }
+        
+        /* LOGO DEL JUEGO */
+        #game-logo {
+            max-width: 20%;
+            height: auto;
+            margin-bottom: 30px;
+            filter: drop-shadow(0 0 15px #00f2ff);
+            animation: floatLogo 3s ease-in-out infinite;
+        }
+        @keyframes floatLogo { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         
         .btn { 
             pointer-events: auto; background: linear-gradient(180deg, #00f2ff22, #00889944); 
@@ -67,7 +87,8 @@
     <div id="ui-layer">
         <div id="main-menu" class="overlay">
             <div id="win-msg">VICTORIA</div>
-            <h1 style="font-size: 70px; margin: 0; color: #e0f7fa; text-shadow: 0 0 25px #00f2ff; font-style: italic;">GLOBAL FROST</h1>
+            <img id="game-logo" src="https://i.postimg.cc/yxwkZp04/titulo.png" alt="Global Frost">
+            
             <p style="color: #88ccdd; margin-bottom: 50px; letter-spacing: 6px; font-weight: bold;">DX GAMES</p>
             <div id="menu-start"><div class="btn" onclick="showModes()">JUGAR</div></div>
             <div id="menu-modes" style="display: none; flex-direction: column; align-items: center;">
@@ -125,7 +146,8 @@
             hit: new Audio('dialogues/Auch.mp3'),
             bored1: new Audio('dialogues/aburrido1.mp3'),
             bored2: new Audio('dialogues/aburrido2.mp3'),
-            bored3: new Audio('dialogues/aburrido3.mp3')
+            bored3: new Audio('dialogues/aburrido3.mp3'),
+            no: new Audio('dialogues/No.mp3') // NUEVO AUDIO
         };
         Object.values(AUDIO).forEach(s => { s.load(); s.volume = 0.8; });
         
@@ -143,6 +165,7 @@
         const WORLD_HEIGHT = 1500;
         const GRAVITY = 0.35; 
         const WATER_LEVEL = 1000;
+        const ICE_DEPTH = 350; 
         
         const WEAPONS = [
             { name: "BOLA", dmg: 15, ammo: 999, kb: 5 },    
@@ -316,13 +339,23 @@
                 let tY = 99999;
                 if(p.x >= 0 && p.x < WORLD_WIDTH) tY = terrain[Math.floor(p.x)];
                 
+                // MUERTE POR AGUA
+                if(p.y > WATER_LEVEL + 50 && p.state !== 'dead') {
+                     p.state = 'dead';
+                     p.hp = 0;
+                     playSound('no');
+                }
+
                 if(p.state === 'dead') { p.angle += 0.1; } else {
                     if(p.y > tY && p.velY > 0 && tY < 90000) { p.y = tY; p.velY = 0; }
-                    if(p.y > WORLD_HEIGHT + 100) p.state = 'dead';
+                    // Si cae muy abajo, asegurar muerte
+                    if(p.y > WORLD_HEIGHT + 100) {
+                        if(p.state !== 'dead') playSound('no'); 
+                        p.state = 'dead';
+                    }
                 }
                 if(Math.abs(p.velX) > 0.05 || Math.abs(p.velY) > 0.05) anyoneMoving = true;
                 if(p.shootTimer > 0) p.shootTimer--;
-                if(p.y > WORLD_HEIGHT + 500) { p.velX=0; p.velY=0; }
             });
 
             if(aliveA === 0 || aliveB === 0) { endGame(aliveA > 0 ? "¡AZULES GANAN!" : "¡ROJOS GANAN!"); return; }
@@ -330,18 +363,22 @@
             bullets.forEach(b => {
                 if(b.dead) return;
                 
-                // LÓGICA DE TIEMPO (Granada y Racimo)
-                if(b.type === 2) { // Granada
+                // DESAPARECER SI TOCA AGUA
+                if(b.y > WATER_LEVEL + 20) {
+                    b.dead = true;
+                    // Aquí se podría poner un sonido de "splash"
+                    return; 
+                }
+
+                if(b.type === 2) { 
                     if(b.hasCollided) {
                         b.timer++;
-                        // Explota a los 3 segundos (approx 180 frames) después del PRIMER choque
                         if(b.timer > 180) { 
                             createExplosion(b.x, b.y, 70, WEAPONS[2].dmg, WEAPONS[2].kb); 
                             b.dead = true; 
                         }
                     }
-                } else if(b.type === 3) { // Racimo
-                    // Explota a los 4 segundos de haber sido lanzado, independientemente de choques
+                } else if(b.type === 3) { 
                     if(b.lifeTime > 240) { 
                         explodeRacimo(b.x, b.y); b.dead = true; 
                     }
@@ -358,21 +395,24 @@
 
                     let tY = 99999;
                     if(b.x >= 0 && b.x < WORLD_WIDTH) tY = terrain[Math.floor(b.x)];
+                    
+                    let isHit = false;
+                    if(tY < 90000) { 
+                        let bottomY = tY + ICE_DEPTH;
+                        if(b.y >= tY && b.y <= bottomY) {
+                            isHit = true;
+                        }
+                    }
 
-                    // COLISIÓN SUELO
-                    if(b.y >= tY && tY < 90000) {
+                    if(isHit) {
                         if(b.type === 2) { 
                             if(!b.grounded) { 
-                                b.grounded = true; b.hasCollided = true; // Empieza cuenta atrás
+                                b.grounded = true; b.hasCollided = true; 
                                 b.y = tY - 5; 
-                                // Rebote ligero o frenado
                                 b.vx *= 0.5; b.vy = -b.vy * 0.4; 
                                 if(Math.abs(b.vy) < 1) { b.vy = 0; b.vx = 0; }
                             }
                         } else if (b.type === 3) { 
-                             // Racimo también explota si toca suelo, o rebota? 
-                             // El usuario dijo "a los 4 seg aunque no choque", implica que el timer es principal.
-                             // Pero si choca suelo, explotemos para no complicar la jugabilidad
                              explodeRacimo(b.x, b.y); b.dead = true;
                         } else { 
                             let stats = (b.type === 4) ? WEAPONS[4] : WEAPONS[b.type];
@@ -381,7 +421,6 @@
                         }
                     }
 
-                    // COLISIÓN PINGÜINOS
                     if(!b.dead) { 
                         penguins.forEach(p => {
                             if(p.state !== 'dead') {
@@ -391,8 +430,7 @@
                                 
                                 if(Math.hypot(b.x - p.x, b.y - (p.y - 20)) < 25) { 
                                     if(b.type === 2) { 
-                                         b.hasCollided = true; // Empieza cuenta atrás
-                                         // Rebota del pingüino
+                                         b.hasCollided = true; 
                                          b.vx = -b.vx * 0.5; b.vy = -2; 
                                     } else if (b.type === 3) {
                                          explodeRacimo(b.x, b.y); b.dead = true;
@@ -428,57 +466,77 @@
             ctx.scale(camera.zoom, camera.zoom);
             ctx.translate(-camera.x, -camera.y);
 
-            // 1. TERRENO (Icebergs) - Dibujar primero para que el agua tape la parte de abajo
+            // 1. TERRENO (Icebergs)
             ctx.fillStyle = "#ffffff";
             ctx.beginPath();
             
             let started = false;
             let startX = 0;
-            // Dibujamos el polígono del terreno muy profundo y con fondo plano
+            
             for(let x=0; x<=WORLD_WIDTH; x++) {
                 let h = (x < WORLD_WIDTH) ? terrain[x] : 99999;
                 
                 if(h < 90000 && !started) {
                     ctx.moveTo(x, h); started = true; startX = x;
                 } else if ((h >= 90000 || x === WORLD_WIDTH) && started) {
-                    // Terminó un bloque de hielo. Cerramos el polígono hacia abajo y plano.
                     let endX = x-1;
-                    let deepY = WORLD_HEIGHT + 200; // Profundidad plana
-                    
-                    ctx.lineTo(endX, deepY); // Esquina inferior derecha plana
-                    ctx.lineTo(startX, deepY); // Esquina inferior izquierda plana
-                    ctx.lineTo(startX, terrain[startX]); // Volver al inicio
+                    for(let bx = endX; bx >= startX; bx-=10) {
+                        ctx.lineTo(bx, terrain[bx] + ICE_DEPTH);
+                    }
+                    ctx.lineTo(startX, terrain[startX]);
                     started = false;
                 } else if (started) {
                     ctx.lineTo(x, h);
                 }
             }
             ctx.fill();
-            // Borde del hielo
             ctx.lineWidth = 4; ctx.strokeStyle = "#88ddff"; ctx.stroke();
 
-            // 2. AGUA (Superpuesta para efecto submarino)
+            // 2. AGUA
             let waterY = WATER_LEVEL + Math.sin(globalTime) * 5;
-            ctx.fillStyle = "rgba(0, 40, 150, 0.55)"; // Azul semitransparente
-            // Dibujar el agua cubriendo todo lo que esté debajo del nivel del mar
+            ctx.fillStyle = "rgba(0, 40, 150, 0.55)"; 
             ctx.fillRect(-1000, waterY, WORLD_WIDTH+2000, 2000);
             
-            // Línea de superficie del agua
             ctx.beginPath(); ctx.moveTo(-1000, waterY); ctx.lineTo(WORLD_WIDTH+1000, waterY);
             ctx.strokeStyle = "rgba(100, 200, 255, 0.5)"; ctx.lineWidth = 2; ctx.stroke();
 
 
-            // PINGÜINOS
+            // PINGÜINOS Y GUIAS
             penguins.forEach(p => {
                 let flip = (p.team === 'A'); 
                 if(p.state === 'dead') {
                     drawSpriteCentered(IMAGES.downed, p.x, p.y - 20, 40, 40, p.angle, flip);
                     return;
                 }
+                
+                // GUÍA DE APUNTADO CORREGIDA
+                if(p === getActive() && !shotFired) {
+                    ctx.save();
+                    ctx.translate(p.x, p.y - 20);
+                    
+                    // Si es equipo A (flip=true), miran a la derecha, ángulo normal.
+                    // Si es equipo B (flip=false), miran a la izquierda.
+                    // El truco es NO usar scale(-1,1) para el cono, sino rotarlo.
+                    
+                    if(!flip) ctx.scale(-1, 1); // Solo volteamos si es equipo B para que apunte izquierda
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0,0);
+                    ctx.arc(0, 0, 150, p.angle - 0.15, p.angle + 0.15); 
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.15)";
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0,0);
+                    ctx.lineTo(Math.cos(p.angle)*200, Math.sin(p.angle)*200);
+                    ctx.strokeStyle = "rgba(255, 0, 0, 0.4)";
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
                 let img = IMAGES.penguin;
                 if(p.shootTimer > 0) img = IMAGES.angry; 
-
-                // Flote visual
                 let floatY = Math.sin(globalTime + p.x) * 2;
                 
                 drawSpriteCentered(img, p.x, p.y - 22 + floatY, 40, 45, 0, flip);
@@ -495,7 +553,6 @@
                 }
             });
 
-            // PROYECTILES
             bullets.forEach(b => {
                 let img = IMAGES.snowball; let s = 16; let flip = false;
                 if(b.type === 1) { img = IMAGES.missile; s = 30; } 
@@ -600,7 +657,10 @@
                     p.velY += upForce;
 
                     p.hp -= damage * force; 
-                    if(p.hp <= 0) { p.hp = 0; p.state = 'dead'; }
+                    if(p.hp <= 0) { 
+                        p.hp = 0; 
+                        if(p.state !== 'dead') { p.state = 'dead'; playSound('no'); }
+                    }
                 }
             });
             if(hitAnyone) playSound('hit');
