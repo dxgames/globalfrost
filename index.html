@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <title>Global Frost 1.0 - DX GAMES</title>
-    <meta name="description" content="¡La primera nevada mundial ha comenzado! Lidera a tu escuadrón de pingüinos tácticos en batallas explosivas sobre icebergs flotantes. Artillería pesada y caos helado.">
-    <meta property="og:title" content="Global Frost 1.0">
+    <title>Global Frost 2.0 - DX GAMES</title>
+    <meta name="description" content="¡La primera nevada mundial ha comenzado! Lidera a tu escuadrón de pingüinos tácticos en batallas explosivas sobre icebergs flotantes.">
+    <meta property="og:title" content="Global Frost 2.0">
     <meta property="og:description" content="¡La primera nevada mundial ha comenzado! ¿Podrás mantenerte a flote o te convertirás en granizado? Juega ahora.">
     <meta property="og:image" content="https://i.postimg.cc/NF7jKGGw/previsualizacion.jpg">
     <meta property="og:type" content="website">
@@ -27,57 +27,58 @@
         
         .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(5,10,20,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; z-index: 100; transition: opacity 0.5s; }
         
-        /* LOGO DEL JUEGO */
+        /* v2.0: Reducción de tamaño del logo */
         #game-logo {
-            max-width: 50%; /* Ajustado manualmente para que no tape */
+            max-width: 35%; 
             height: auto;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             filter: drop-shadow(0 0 15px #00f2ff);
             animation: floatLogo 3s ease-in-out infinite;
         }
         @keyframes floatLogo { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         
+        /* v2.0: Botones más pequeños */
         .btn { 
             pointer-events: auto; background: linear-gradient(180deg, #00f2ff22, #00889944); 
-            border: 2px solid #00f2ff; padding: 20px 60px; margin: 15px; border-radius: 10px; 
-            color: white; font-weight: 900; font-size: 24px; cursor: pointer; text-transform: uppercase; letter-spacing: 3px;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+            border: 2px solid #00f2ff; padding: 12px 40px; margin: 10px; border-radius: 8px; 
+            color: white; font-weight: 900; font-size: 18px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
         }
         .btn:active { background: #00f2ff; color: #000; transform: scale(0.95); }
-        .btn-small { padding: 15px 40px; font-size: 18px; }
+        .btn-small { padding: 10px 30px; font-size: 14px; }
 
         #turn-indicator { 
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); 
-            font-size: 22px; font-weight: 900; letter-spacing: 2px; color: #fff;
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%); 
+            font-size: 16px; font-weight: 900; letter-spacing: 2px; color: #fff;
             text-shadow: 0 2px 5px rgba(0,0,0,0.8); background: rgba(0,0,0,0.6); 
-            padding: 10px 40px; border-radius: 30px; border: 2px solid;
+            padding: 8px 30px; border-radius: 30px; border: 1px solid;
             box-shadow: 0 5px 15px rgba(0,0,0,0.4);
         }
         
         #win-msg {
-            font-size: 60px; color: #ffd700; text-shadow: 0 0 20px #ff0000; font-weight: bold; display: none; margin-bottom: 20px;
+            font-size: 40px; color: #ffd700; text-shadow: 0 0 20px #ff0000; font-weight: bold; display: none; margin-bottom: 20px;
         }
 
-        #weapon-selector { position: absolute; top: 80px; right: 20px; display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
-        .w-btn { background: rgba(0,0,0,0.7); border: 1px solid #555; padding: 10px 15px; border-radius: 5px; color: #ccc; text-align: right; font-size: 14px; cursor: pointer; display: flex; justify-content: space-between; min-width: 140px; }
-        .w-selected { border-color: #00f2ff; color: #fff; background: rgba(0, 242, 255, 0.25); transform: translateX(-10px); }
-        .ammo-count { color: #aaa; font-size: 11px; margin-left: 10px; }
+        #weapon-selector { position: absolute; top: 60px; right: 15px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; transform: scale(0.9); transform-origin: top right; }
+        .w-btn { background: rgba(0,0,0,0.7); border: 1px solid #555; padding: 8px 12px; border-radius: 5px; color: #ccc; text-align: right; font-size: 12px; cursor: pointer; display: flex; justify-content: space-between; min-width: 120px; }
+        .w-selected { border-color: #00f2ff; color: #fff; background: rgba(0, 242, 255, 0.25); transform: translateX(-5px); }
+        .ammo-count { color: #aaa; font-size: 10px; margin-left: 10px; }
 
         #power-bar-container {
-            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
-            width: 300px; height: 18px; background: #222; border: 2px solid #fff; border-radius: 8px; display: none; overflow: hidden;
+            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+            width: 200px; height: 12px; background: #222; border: 1px solid #fff; border-radius: 6px; display: none; overflow: hidden;
         }
         #power-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #ffeb3b, #ff0000); }
 
-        #controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; pointer-events: none; }
+        #controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; pointer-events: none; }
         .game-btn { 
-            pointer-events: auto; width: 85px; height: 85px; border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; font-size: 35px; color: white;
+            pointer-events: auto; width: 70px; height: 70px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; font-size: 30px; color: white;
             background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.4); backdrop-filter: blur(5px);
             user-select: none;
         }
         .game-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.95); }
-        #btn-fire { width: 110px; height: 110px; background: rgba(255, 50, 50, 0.25); border-color: #ff5555; font-size: 50px; }
+        #btn-fire { width: 90px; height: 90px; background: rgba(255, 50, 50, 0.25); border-color: #ff5555; font-size: 40px; }
     </style>
 </head>
 <body>
@@ -88,8 +89,7 @@
         <div id="main-menu" class="overlay">
             <div id="win-msg">VICTORIA</div>
             <img id="game-logo" src="https://i.postimg.cc/yxwkZp04/titulo.png" alt="Global Frost">
-            
-            <p style="color: #88ccdd; margin-bottom: 50px; letter-spacing: 6px; font-weight: bold;">DX GAMES</p>
+            <p style="color: #88ccdd; margin-bottom: 30px; letter-spacing: 4px; font-weight: bold; font-size: 12px;">DX GAMES</p>
             <div id="menu-start"><div class="btn" onclick="showModes()">JUGAR</div></div>
             <div id="menu-modes" style="display: none; flex-direction: column; align-items: center;">
                 <div class="btn btn-small" onclick="startGame('1P')">VS CPU</div>
@@ -108,7 +108,7 @@
             </div>
             <div id="power-bar-container"><div id="power-fill"></div></div>
             <div id="controls">
-                <div style="display: flex; gap: 20px;">
+                <div style="display: flex; gap: 15px;">
                     <div class="game-btn" id="btn-up">▲</div>
                     <div class="game-btn" id="btn-down">▼</div>
                 </div>
@@ -129,7 +129,7 @@
         };
         IMAGES.penguin.src = 'https://i.postimg.cc/jjNLxmvq/pinguino.png';
         IMAGES.angry.src = 'https://i.postimg.cc/bvbsyWLd/enojado.png';
-        IMAGES.downed.src = 'https://i.postimg.cc/YSghrZ80/derribado.png';
+        IMAGES.downed.src = 'https://i.postimg.cc/YSghrZ80/derribado.png'; // Usado para ASUSTADO/HERIDO y MUERTO
         IMAGES.bazooka.src = 'https://i.postimg.cc/9fTrmK1Q/bazooka.png';
         IMAGES.snowball.src = 'https://i.postimg.cc/XvFpjmxy/boladenieve.png';
         IMAGES.grenade.src = 'https://i.postimg.cc/Lsfn9wvf/granada.png';
@@ -165,21 +165,22 @@
         const WORLD_HEIGHT = 1500;
         const GRAVITY = 0.35; 
         const WATER_LEVEL = 1000;
-        const ICE_DEPTH = 350; 
+        const ICE_DEPTH = 300; // v2.0: Reducido un poco
         
+        // v2.0: Nuevos valores de daño y empuje (kb)
         const WEAPONS = [
-            { name: "BOLA", dmg: 15, ammo: 999, kb: 5 },    
-            { name: "MISIL", dmg: 25, ammo: 5, kb: 10 },    
-            { name: "GRANADA", dmg: 35, ammo: 5, kb: 10 },  
-            { name: "RACIMO", dmg: 45, ammo: 5, kb: 20 },   
-            { name: "FRAG", dmg: 25, ammo: 0, kb: 10 }      
+            { name: "BOLA", dmg: 30, ammo: 999, kb: 40 },      
+            { name: "MISIL", dmg: 40, ammo: 5, kb: 40 },       
+            { name: "GRANADA", dmg: 60, ammo: 5, kb: 60 },     
+            { name: "RACIMO", dmg: 60, ammo: 5, kb: 60 },      // Asumimos Racimo = Granada Principal en stats
+            { name: "FRAG", dmg: 40, ammo: 0, kb: 40 }         // Fragmentos del racimo
         ];
 
         let width, height;
         let gameState = 'MENU';
         let gameMode = '1P';
         let currentTurn = 'A';
-        let penguins = [], bullets = [], terrain = [];
+        let penguins = [], bullets = [], terrain = [], particles = [];
         let teamAmmo = { A: [999,5,5,5], B: [999,5,5,5] };
         
         let activeIdxA = 0, activeIdxB = 0;
@@ -189,6 +190,7 @@
         
         let idleTimer = 0;
         let globalTime = 0;
+        let wind = 0; // v2.0: Variable de viento
         
         let camera = { x: 0, y: 0, zoom: 1, targetX: 0, targetY: 0, targetZoom: 1, manual: false };
         let touchStart = { x:0, y:0, d:0 };
@@ -204,7 +206,7 @@
         resize();
 
         function fitScreenToWorld() {
-            let desiredVisibleWidth = 2000; 
+            let desiredVisibleWidth = 2500; // v2.0: Zoom alejado (más contenido visible)
             camera.zoom = width / desiredVisibleWidth;
             camera.x = (WORLD_WIDTH / 2) - (width / 2) / camera.zoom;
             camera.y = (WORLD_HEIGHT * 0.4); 
@@ -241,10 +243,11 @@
         }
 
         function resetGame() {
-            penguins = []; bullets = [];
+            penguins = []; bullets = []; particles = [];
             currentTurn = 'A'; shotFired = false; activeIdxA = 0; activeIdxB = 0;
             aimingDir = 0; camera.manual = false; 
             teamAmmo = { A: [999,5,5,5], B: [999,5,5,5] }; 
+            wind = (Math.random() - 0.5) * 0.08; // Viento inicial
             updateTurnUI();
             updateAmmoUI();
             generateTerrain();
@@ -253,6 +256,16 @@
             spawnTeam('B', 2100, 2900); 
             fitScreenToWorld();
             snapCameraToActive();
+            
+            // Generar partículas iniciales
+            for(let i=0; i<100; i++) {
+                particles.push({
+                    x: Math.random() * WORLD_WIDTH,
+                    y: Math.random() * WORLD_HEIGHT,
+                    r: Math.random() * 2 + 1,
+                    speed: Math.random() * 2 + 1
+                });
+            }
         }
 
         function generateTerrain() {
@@ -274,7 +287,8 @@
                 penguins.push({
                     x: x, y: 0, team: team, hp: 100,
                     angle: -0.5, velX: 0, velY: 0, state: 'idle', 
-                    radius: 20, id: Math.random(), shootTimer: 0
+                    radius: 20, id: Math.random(), 
+                    shootTimer: 0, hurtTimer: 0 // v2.0 timers
                 });
             }
         }
@@ -292,6 +306,15 @@
         function update() {
             globalTime += 0.05;
 
+            // v2.0: Partículas de nieve
+            particles.forEach(p => {
+                p.y += p.speed;
+                p.x += wind * 20; // Se mueven con el viento
+                if(p.y > WORLD_HEIGHT) p.y = -10;
+                if(p.x > WORLD_WIDTH) p.x = 0;
+                if(p.x < 0) p.x = WORLD_WIDTH;
+            });
+
             if(!shotFired && bullets.length === 0 && (gameMode === '2P' || currentTurn === 'A')) {
                 idleTimer++;
                 if(idleTimer > 420) {
@@ -305,7 +328,7 @@
 
             if(!camera.manual) {
                 let target = getActive();
-                let z = width / 1800; 
+                let z = width / 2500; // Zoom ajustado
                 if(bullets.length > 0) { target = bullets[0]; z = z * 0.8; }
                 if(target) {
                     camera.targetX = target.x - (width / 2) / z;
@@ -316,7 +339,7 @@
                 camera.y += (camera.targetY - camera.y) * 0.1;
                 camera.zoom += (camera.targetZoom - camera.zoom) * 0.05;
             }
-            camera.zoom = Math.max(0.6, Math.min(camera.zoom, 1.5)); 
+            camera.zoom = Math.max(0.4, Math.min(camera.zoom, 1.2)); 
             camera.x = Math.max(0, Math.min(camera.x, WORLD_WIDTH - width/camera.zoom));
             camera.y = Math.max(-500, Math.min(camera.y, 1000)); 
 
@@ -342,21 +365,20 @@
                     
                     if(p.y > tY && p.velY > 0 && tY < 90000) { p.y = tY; p.velY = 0; }
                     
-                    // MUERTE POR AGUA
                     if(p.y > WATER_LEVEL + 50) {
                         p.state = 'dead'; p.hp = 0; playSound('no');
                     }
                 } else {
-                    // Pingüino muerto: animación simple
                     p.angle += 0.1; 
                 }
                 
-                // CORRECCIÓN BUG TURNO: Solo contar movimiento de los VIVOS
                 if(p.state !== 'dead') {
                     if(Math.abs(p.velX) > 0.05 || Math.abs(p.velY) > 0.05) anyoneMoving = true;
                 }
                 
+                // Timers de sprites
                 if(p.shootTimer > 0) p.shootTimer--;
+                if(p.hurtTimer > 0) p.hurtTimer--;
             });
 
             if(aliveA === 0 || aliveB === 0) { endGame(aliveA > 0 ? "¡AZULES GANAN!" : "¡ROJOS GANAN!"); return; }
@@ -364,18 +386,24 @@
             bullets.forEach(b => {
                 if(b.dead) return;
                 
-                // Si la granada ha parado (grounded), contar tiempo
-                if(b.type === 2 && b.grounded) {
-                    b.timer++;
-                    if(b.timer > 180) { 
-                        createExplosion(b.x, b.y, 70, WEAPONS[2].dmg, WEAPONS[2].kb); 
-                        b.dead = true; 
-                    }
-                    return; // No actualizar física si está parada
+                // v2.0: VIENTO (Afecta solo bola y misil)
+                if(b.type === 0 || b.type === 1) {
+                    b.vx += wind; 
                 }
-                
-                // Racimo explota por tiempo
-                if(b.type === 3 && b.lifeTime > 240) { explodeRacimo(b.x, b.y); b.dead = true; }
+
+                // v2.0: GRANADA LÓGICA (Explota a los 2s del PRIMER toque)
+                if(b.type === 2) { 
+                    if(b.hasCollided) {
+                        b.timer++;
+                        // Explota exactamente a los 2 segundos (120 frames) aunque se mueva
+                        if(b.timer > 120) { 
+                            createExplosion(b.x, b.y, 70, WEAPONS[2].dmg, WEAPONS[2].kb); 
+                            b.dead = true; 
+                        }
+                    }
+                } else if(b.type === 3 && b.lifeTime > 240) { // Racimo timer aire
+                     explodeRacimo(b.x, b.y); b.dead = true; 
+                }
 
                 if(!b.dead) {
                     b.x += b.vx; b.y += b.vy; b.vy += GRAVITY; 
@@ -391,24 +419,24 @@
                     let tY = 99999;
                     if(b.x >= 0 && b.x < WORLD_WIDTH) tY = terrain[Math.floor(b.x)];
                     
-                    // COLISIÓN MEJORADA (ICEBERG SÓLIDO)
                     let isHit = false;
                     if(tY < 90000) { 
-                        // Choca si está dentro del bloque de hielo
                         if(b.y >= tY && b.y <= tY + ICE_DEPTH) { isHit = true; }
                     }
 
                     if(isHit) {
                         if(b.type === 2) { 
-                            b.hasCollided = true; // Inicia la cuenta regresiva lógica si hiciera falta, aunque aquí usamos grounded para parar
-                            // REBOTE BAJO (Corrección solicitada)
+                            // v2.0: Activar timer al primer toque
+                            if(!b.hasCollided) {
+                                b.hasCollided = true;
+                                b.timer = 0; // Reset para asegurar 2s exactos
+                            }
+
                             if(Math.abs(b.vy) > 2) {
-                                // Sigue rebotando
-                                b.y = tY - 5; // Sacar del hielo para que no traspase
-                                b.vy = -b.vy * 0.3; // Rebote bajo (antes 0.5)
-                                b.vx *= 0.6; // Fricción
+                                b.y = tY - 5; 
+                                b.vy = -b.vy * 0.3; 
+                                b.vx *= 0.6; 
                             } else {
-                                // Se detiene
                                 b.grounded = true; 
                                 b.y = tY - 5;
                                 b.vx = 0; b.vy = 0;
@@ -422,7 +450,7 @@
                         }
                     }
 
-                    if(!b.dead && !b.grounded) { 
+                    if(!b.dead && (!b.grounded || b.type !== 2)) { // Seguir checkeando colisión pingüinos si se mueve O es granada
                         penguins.forEach(p => {
                             if(p.state !== 'dead') {
                                 let isSelf = (b.ownerId === p.id);
@@ -431,7 +459,8 @@
                                 
                                 if(Math.hypot(b.x - p.x, b.y - (p.y - 20)) < 25) { 
                                     if(b.type === 2) { 
-                                         b.hasCollided = true; 
+                                         // v2.0: Activar timer al golpear pingüino
+                                         if(!b.hasCollided) { b.hasCollided = true; b.timer = 0; }
                                          b.vx = -b.vx * 0.5; b.vy = -2; 
                                     } else if (b.type === 3) {
                                          explodeRacimo(b.x, b.y); b.dead = true;
@@ -451,10 +480,12 @@
             });
             bullets = bullets.filter(b => !b.dead);
 
-            // CORRECCIÓN BUG TURNO: Ignorar proyectiles "muertos" o parados
-            let projectilesFlying = bullets.filter(b => !b.grounded && !b.dead).length > 0;
+            // Si es granada y el timer corre, NO se considera "proyectil en vuelo" para cambiar turno hasta que explote
+            // A menos que esté quieta esperando. Pero mejor esperar la explosión.
+            let activeProjectiles = bullets.filter(b => !b.dead).length > 0;
             
-            if(!projectilesFlying && !anyoneMoving && shotFired) {
+            // v2.0: Ajuste turno. Esperar a que exploten las granadas.
+            if(!activeProjectiles && !anyoneMoving && shotFired) {
                 nextTurn();
             }
 
@@ -469,96 +500,92 @@
             ctx.scale(camera.zoom, camera.zoom);
             ctx.translate(-camera.x, -camera.y);
 
-            // 1. TERRENO (Icebergs)
+            // PARTÍCULAS FONDO
+            ctx.fillStyle = "rgba(255,255,255,0.3)";
+            particles.forEach(p => {
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+            });
+
+            // TERRENO
             ctx.fillStyle = "#ffffff";
             ctx.beginPath();
-            
-            let started = false;
-            let startX = 0;
-            
+            let started = false; let startX = 0;
             for(let x=0; x<=WORLD_WIDTH; x++) {
                 let h = (x < WORLD_WIDTH) ? terrain[x] : 99999;
-                
                 if(h < 90000 && !started) {
                     ctx.moveTo(x, h); started = true; startX = x;
                 } else if ((h >= 90000 || x === WORLD_WIDTH) && started) {
                     let endX = x-1;
-                    for(let bx = endX; bx >= startX; bx-=10) {
-                        ctx.lineTo(bx, terrain[bx] + ICE_DEPTH);
-                    }
+                    for(let bx = endX; bx >= startX; bx-=10) { ctx.lineTo(bx, terrain[bx] + ICE_DEPTH); }
                     ctx.lineTo(startX, terrain[startX]);
                     started = false;
-                } else if (started) {
-                    ctx.lineTo(x, h);
-                }
+                } else if (started) { ctx.lineTo(x, h); }
             }
             ctx.fill();
             ctx.lineWidth = 4; ctx.strokeStyle = "#88ddff"; ctx.stroke();
 
-            // 2. AGUA
+            // AGUA
             let waterY = WATER_LEVEL + Math.sin(globalTime) * 5;
             ctx.fillStyle = "rgba(0, 40, 150, 0.55)"; 
             ctx.fillRect(-1000, waterY, WORLD_WIDTH+2000, 2000);
-            
             ctx.beginPath(); ctx.moveTo(-1000, waterY); ctx.lineTo(WORLD_WIDTH+1000, waterY);
             ctx.strokeStyle = "rgba(100, 200, 255, 0.5)"; ctx.lineWidth = 2; ctx.stroke();
 
-
-            // PINGÜINOS Y GUIAS
+            // PINGÜINOS
             penguins.forEach(p => {
                 let flip = (p.team === 'A'); 
                 if(p.state === 'dead') {
-                    drawSpriteCentered(IMAGES.downed, p.x, p.y - 20, 40, 40, p.angle, flip);
+                    // v2.0: Sprite derribado para muerto, semitransparente
+                    ctx.globalAlpha = 0.6;
+                    drawSpriteCentered(IMAGES.downed, p.x, p.y - 10, 30, 30, p.angle, flip); // Más pequeño
+                    ctx.globalAlpha = 1;
                     return;
                 }
                 
-                // GUÍA DE APUNTADO
+                // GUÍA
                 if(p === getActive() && !shotFired) {
-                    ctx.save();
-                    ctx.translate(p.x, p.y - 20);
+                    ctx.save(); ctx.translate(p.x, p.y - 15);
                     if(!flip) ctx.scale(-1, 1); 
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(0,0);
-                    ctx.arc(0, 0, 150, p.angle - 0.15, p.angle + 0.15); 
-                    ctx.fillStyle = "rgba(255, 0, 0, 0.15)";
-                    ctx.fill();
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(0,0);
-                    ctx.lineTo(Math.cos(p.angle)*200, Math.sin(p.angle)*200);
-                    ctx.strokeStyle = "rgba(255, 0, 0, 0.4)";
-                    ctx.setLineDash([5, 5]);
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0, 0, 150, p.angle - 0.15, p.angle + 0.15); 
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.15)"; ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(p.angle)*200, Math.sin(p.angle)*200);
+                    ctx.strokeStyle = "rgba(255, 0, 0, 0.4)"; ctx.setLineDash([5, 5]); ctx.stroke();
                     ctx.restore();
                 }
 
+                // v2.0: Lógica de SPRITES
                 let img = IMAGES.penguin;
-                if(p.shootTimer > 0) img = IMAGES.angry; 
+                if(p.hurtTimer > 0) img = IMAGES.downed; // Asustado/Herido
+                else if(p.shootTimer > 0 || isCharging && p === getActive()) img = IMAGES.angry; // Enojado disparando o cargando
+                
                 let floatY = Math.sin(globalTime + p.x) * 2;
                 
-                drawSpriteCentered(img, p.x, p.y - 22 + floatY, 40, 45, 0, flip);
+                // v2.0: Pingüinos más pequeños (30x35 antes 40x45)
+                drawSpriteCentered(img, p.x, p.y - 18 + floatY, 30, 35, 0, flip);
 
-                let drawRot = flip ? -p.angle : -p.angle; 
-                drawWeaponCentered(IMAGES.bazooka, p.x, p.y - 20 + floatY, 65, 32, drawRot, flip);
+                if(p.state !== 'dead' && p.hurtTimer <= 0) {
+                     let drawRot = flip ? -p.angle : -p.angle; 
+                     drawWeaponCentered(IMAGES.bazooka, p.x, p.y - 15 + floatY, 50, 25, drawRot, flip); // Arma reducida
+                }
 
-                ctx.fillStyle = "red"; ctx.fillRect(p.x-15, p.y-60 + floatY, 30, 4);
-                ctx.fillStyle = "#0f0"; ctx.fillRect(p.x-15, p.y-60 + floatY, 30 * (p.hp/100), 4);
+                // Barras vida reducidas
+                ctx.fillStyle = "red"; ctx.fillRect(p.x-12, p.y-50 + floatY, 24, 3);
+                ctx.fillStyle = "#0f0"; ctx.fillRect(p.x-12, p.y-50 + floatY, 24 * (p.hp/100), 3);
                 
                 if(p === getActive()) {
                     ctx.fillStyle = p.team === 'A' ? "#00f2ff" : "#ff4444";
-                    ctx.beginPath(); ctx.moveTo(p.x, p.y-70+floatY); ctx.lineTo(p.x-6, p.y-80+floatY); ctx.lineTo(p.x+6, p.y-80+floatY); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y-60+floatY); ctx.lineTo(p.x-5, p.y-70+floatY); ctx.lineTo(p.x+5, p.y-70+floatY); ctx.fill();
                 }
             });
 
             bullets.forEach(b => {
-                let img = IMAGES.snowball; let s = 16; let flip = false;
-                if(b.type === 1) { img = IMAGES.missile; s = 30; } 
-                if(b.type === 2) { img = IMAGES.grenade; s = 16; }
-                if(b.type === 3) { img = IMAGES.cluster; s = 22; }
-                if(b.type === 4) { img = IMAGES.fragment; s = 12; }
+                let img = IMAGES.snowball; let s = 12; let flip = false; // Reducidos
+                if(b.type === 1) { img = IMAGES.missile; s = 24; } 
+                if(b.type === 2) { img = IMAGES.grenade; s = 12; }
+                if(b.type === 3) { img = IMAGES.cluster; s = 18; }
+                if(b.type === 4) { img = IMAGES.fragment; s = 8; }
                 
-                drawSpriteCentered(img, b.x, b.y, s, (b.type===1?15:s), b.rot, flip);
+                drawSpriteCentered(img, b.x, b.y, s, (b.type===1?12:s), b.rot, flip);
             });
             ctx.restore();
         }
@@ -579,7 +606,7 @@
             ctx.translate(x, y);
             if(flip) ctx.scale(-1, 1); 
             ctx.rotate(rot); 
-            ctx.drawImage(img, -w/2 + 10, -h/2, w, h);
+            ctx.drawImage(img, -w/2 + 8, -h/2, w, h);
             ctx.restore();
         }
 
@@ -609,14 +636,14 @@
             if(selectedWeapon !== 0) teamAmmo[currentTurn][selectedWeapon]--; 
             updateAmmoUI();
 
-            p.shootTimer = 60; 
+            p.shootTimer = 120; // v2.0: 2 segundos de cara enojada
             
             let flip = (p.team === 'A');
             let dir = flip ? 1 : -1;
             
-            let barrelLen = 40; 
+            let barrelLen = 30; 
             let mx = p.x + Math.cos(p.angle) * barrelLen * dir;
-            let my = (p.y - 20) + Math.sin(p.angle) * barrelLen; 
+            let my = (p.y - 15) + Math.sin(p.angle) * barrelLen; 
 
             let speed = power * 1.5;
             let vx = Math.cos(p.angle) * speed * dir;
@@ -644,6 +671,9 @@
                 
                 if(dist < radius + 30) {
                     hitAnyone = true;
+                    // v2.0: Sprite asustado/herido
+                    p.hurtTimer = 120; // 2 segundos
+                    
                     let force = (radius - dist) / radius;
                     if(force < 0) force = 0; 
                     if(force > 0) force = 0.2 + (force * 0.8);
@@ -683,6 +713,9 @@
             shotFired = false; camera.manual = false;
             resetIdle();
             currentTurn = currentTurn === 'A' ? 'B' : 'A';
+            // v2.0: Cambiar dirección del viento
+            wind = (Math.random() - 0.5) * 0.08; 
+            
             updateTurnUI();
             updateAmmoUI();
             
@@ -793,7 +826,7 @@
                 let d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                 let zoomFactor = d / touchStart.d;
                 camera.zoom *= zoomFactor;
-                camera.zoom = Math.max(0.4, Math.min(camera.zoom, 1.5));
+                camera.zoom = Math.max(0.4, Math.min(camera.zoom, 1.2));
                 touchStart.d = d;
             }
         }, {passive: false});
