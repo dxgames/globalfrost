@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Global Frost 2.7 - DX GAMES</title>
+    <style>
+        body { 
+            margin: 0; overflow: hidden; background: #000; 
+            font-family: 'Segoe UI', sans-serif; 
+            -webkit-user-select: none; user-select: none; touch-action: none;
+            width: 100vw; height: 100vh;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(5,10,20,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; z-index: 100; transition: opacity 0.5s; }
+        
+        .btn { 
+            pointer-events: auto; background: linear-gradient(180deg, #00f2ff22, #00889944); 
+            border: 2px solid #00f2ff; padding: 20px 60px; margin: 15px; border-radius: 10px; 
+            color: white; font-weight: 900; font-size: 24px; cursor: pointer; text-transform: uppercase; letter-spacing: 3px;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+        }
+        .btn:active { background: #00f2ff; color: #000; transform: scale(0.95); }
+        .btn-small { padding: 15px 40px; font-size: 18px; }
+
+        #turn-indicator { 
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); 
+            font-size: 22px; font-weight: 900; letter-spacing: 2px; color: #fff;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8); background: rgba(0,0,0,0.6); 
+            padding: 10px 40px; border-radius: 30px; border: 2px solid;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
+        
+        #win-msg {
+            font-size: 60px; color: #ffd700; text-shadow: 0 0 20px #ff0000; font-weight: bold; display: none; margin-bottom: 20px;
+        }
+
+        #weapon-selector { position: absolute; top: 80px; right: 20px; display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
+        .w-btn { background: rgba(0,0,0,0.7); border: 1px solid #555; padding: 10px 15px; border-radius: 5px; color: #ccc; text-align: right; font-size: 14px; cursor: pointer; display: flex; justify-content: space-between; min-width: 140px; }
+        .w-selected { border-color: #00f2ff; color: #fff; background: rgba(0, 242, 255, 0.25); transform: translateX(-10px); }
+        .ammo-count { color: #aaa; font-size: 11px; margin-left: 10px; }
+
+        #power-bar-container {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            width: 300px; height: 18px; background: #222; border: 2px solid #fff; border-radius: 8px; display: none; overflow: hidden;
+        }
+        #power-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #ffeb3b, #ff0000); }
+
+        #controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; pointer-events: none; }
+        .game-btn { 
+            pointer-events: auto; width: 85px; height: 85px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; font-size: 35px; color: white;
+            background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.4); backdrop-filter: blur(5px);
+            user-select: none;
+        }
+        .game-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.95); }
+        #btn-fire { width: 110px; height: 110px; background: rgba(255, 50, 50, 0.25); border-color: #ff5555; font-size: 50px; }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div id="main-menu" class="overlay">
+            <div id="win-msg">VICTORIA</div>
+            <h1 style="font-size: 70px; margin: 0; color: #e0f7fa; text-shadow: 0 0 25px #00f2ff; font-style: italic;">GLOBAL FROST</h1>
+            <p style="color: #88ccdd; margin-bottom: 50px; letter-spacing: 6px; font-weight: bold;">DX GAMES</p>
+            <div id="menu-start"><div class="btn" onclick="showModes()">JUGAR</div></div>
+            <div id="menu-modes" style="display: none; flex-direction: column; align-items: center;">
+                <div class="btn btn-small" onclick="startGame('1P')">VS CPU</div>
+                <div class="btn btn-small" onclick="startGame('2P')">1 VS 1</div>
+                <div style="margin-top: 10px; color: #aaa; text-decoration: underline; cursor: pointer;" onclick="hideModes()">Volver</div>
+            </div>
+        </div>
+
+        <div id="game-ui" style="display: none;">
+            <div id="turn-indicator">TU TURNO</div>
+            <div id="weapon-selector">
+                <div class="w-btn w-selected" id="w0" onclick="selectWeapon(0)"><span>❄️ BOLA</span><span id="a0" class="ammo-count">∞</span></div>
+                <div class="w-btn" id="w1" onclick="selectWeapon(1)"><span>🚀 MISIL</span><span id="a1" class="ammo-count">x5</span></div>
+                <div class="w-btn" id="w2" onclick="selectWeapon(2)"><span>💣 GRANADA</span><span id="a2" class="ammo-count">x5</span></div>
+                <div class="w-btn" id="w3" onclick="selectWeapon(3)"><span>🧨 RACIMO</span><span id="a3" class="ammo-count">x5</span></div>
+            </div>
+            <div id="power-bar-container"><div id="power-fill"></div></div>
+            <div id="controls">
+                <div style="display: flex; gap: 20px;">
+                    <div class="game-btn" id="btn-up">▲</div>
+                    <div class="game-btn" id="btn-down">▼</div>
+                </div>
+                <div class="game-btn" id="btn-fire">🔥</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- ASSETS ---
+        const IMAGES = {
+            penguin: new Image(), angry: new Image(), downed: new Image(),
+            bazooka: new Image(), snowball: new Image(), grenade: new Image(),
+            cluster: new Image(), fragment: new Image(), missile: new Image(), bg: new Image()
+        };
+        IMAGES.penguin.src = 'https://i.postimg.cc/jjNLxmvq/pinguino.png';
+        IMAGES.angry.src = 'https://i.postimg.cc/bvbsyWLd/enojado.png';
+        IMAGES.downed.src = 'https://i.postimg.cc/YSghrZ80/derribado.png';
+        IMAGES.bazooka.src = 'https://i.postimg.cc/9fTrmK1Q/bazooka.png';
+        IMAGES.snowball.src = 'https://i.postimg.cc/XvFpjmxy/boladenieve.png';
+        IMAGES.grenade.src = 'https://i.postimg.cc/Lsfn9wvf/granada.png';
+        IMAGES.cluster.src = 'https://i.postimg.cc/mrMtLJVz/racimo.png';
+        IMAGES.fragment.src = 'https://i.postimg.cc/d3Sqmj4M/bolasdefuego.png';
+        IMAGES.missile.src = 'https://i.postimg.cc/FzGmp5g8/misil.png';
+        IMAGES.bg.src = 'https://i.postimg.cc/Hkmp0nt1/fondo.jpg';
+
+        // --- CONFIGURACIÓN ---
+        const WORLD_WIDTH = 3000;
+        const WORLD_HEIGHT = 1500;
+        const GRAVITY = 0.35; 
+        
+        // Configuración de Armas (Daño y Munición por equipo)
+        const WEAPONS = [
+            { name: "BOLA", dmg: 5, ammo: 999 },    // 0
+            { name: "MISIL", dmg: 15, ammo: 5 },    // 1
+            { name: "GRANADA", dmg: 20, ammo: 5 },  // 2
+            { name: "RACIMO", dmg: 20, ammo: 5 },   // 3 (Frag dmg 15)
+            { name: "FRAG", dmg: 15, ammo: 0 }      // 4 (Interno)
+        ];
+
+        let width, height;
+        let gameState = 'MENU';
+        let gameMode = '1P';
+        let currentTurn = 'A';
+        let penguins = [], bullets = [], terrain = [];
+        
+        // Munición compartida por equipo
+        let teamAmmo = { A: [999,5,5,5], B: [999,5,5,5] };
+        
+        let activeIdxA = 0, activeIdxB = 0;
+        let selectedWeapon = 0;
+        let power = 0, isCharging = false, shotFired = false;
+        let aimingDir = 0; 
+        
+        let camera = { x: 0, y: 0, zoom: 1, targetX: 0, targetY: 0, targetZoom: 1, manual: false };
+        let touchStart = { x:0, y:0, d:0 };
+        
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            if(gameState === 'PLAYING') fitScreenToWorld();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function fitScreenToWorld() {
+            let desiredVisibleWidth = 2000; 
+            camera.zoom = width / desiredVisibleWidth;
+            camera.x = (WORLD_WIDTH / 2) - (width / 2) / camera.zoom;
+            camera.y = (WORLD_HEIGHT * 0.4); 
+            camera.targetZoom = camera.zoom;
+            camera.targetX = camera.x;
+            camera.targetY = camera.y;
+        }
+
+        // --- SETUP ---
+        window.showModes = () => { document.getElementById('menu-start').style.display = 'none'; document.getElementById('menu-modes').style.display = 'flex'; }
+        window.hideModes = () => { document.getElementById('menu-modes').style.display = 'none'; document.getElementById('menu-start').style.display = 'block'; }
+        window.startGame = (mode) => {
+            gameMode = mode;
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('win-msg').style.display = 'none';
+            document.getElementById('game-ui').style.display = 'block';
+            gameState = 'PLAYING';
+            resetGame();
+        };
+        window.selectWeapon = (id) => {
+            selectedWeapon = id;
+            document.querySelectorAll('.w-btn').forEach((b, i) => b.className = i === id ? 'w-btn w-selected' : 'w-btn');
+        }
+
+        function updateAmmoUI() {
+            let ammoData = teamAmmo[currentTurn];
+            document.getElementById('a0').innerText = "∞";
+            document.getElementById('a1').innerText = "x" + ammoData[1];
+            document.getElementById('a2').innerText = "x" + ammoData[2];
+            document.getElementById('a3').innerText = "x" + ammoData[3];
+        }
+
+        function resetGame() {
+            penguins = []; bullets = [];
+            currentTurn = 'A'; shotFired = false; activeIdxA = 0; activeIdxB = 0;
+            aimingDir = 0; camera.manual = false; 
+            teamAmmo = { A: [999,5,5,5], B: [999,5,5,5] }; // Reset Munición
+            updateTurnUI();
+            updateAmmoUI();
+            generateTerrain();
+            
+            // SPAWN P1 (Izq) y P2 (Der)
+            spawnTeam('A', 100, 900); 
+            spawnTeam('B', 2100, 2900); 
+            
+            fitScreenToWorld();
+        }
+
+        function generateTerrain() {
+            terrain = new Float32Array(WORLD_WIDTH);
+            let baseHeight = 800;
+            for(let x = 0; x < WORLD_WIDTH; x++) {
+                if (x > 1000 && x < 2000) terrain[x] = 99999; 
+                else {
+                    let offset = Math.sin(x * 0.005) * 100 + Math.sin(x * 0.02) * 20;
+                    terrain[x] = baseHeight + offset;
+                }
+            }
+        }
+
+        function spawnTeam(team, minX, maxX) {
+            let step = (maxX - minX) / 3;
+            for(let i=0; i<4; i++) {
+                let x = minX + i * step;
+                penguins.push({
+                    x: x, y: 0, team: team, hp: 100,
+                    angle: -0.5, velX: 0, velY: 0, state: 'idle', 
+                    radius: 20, id: Math.random(), shootTimer: 0
+                });
+            }
+        }
+
+        function loop() {
+            if(IMAGES.bg.complete) ctx.drawImage(IMAGES.bg, 0, 0, width, height);
+            else { ctx.fillStyle = "#051025"; ctx.fillRect(0,0,width,height); }
+
+            if(gameState === 'PLAYING') { update(); drawGame(); }
+            else { ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0,0,width,height); }
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+        function update() {
+            // CÁMARA
+            if(!camera.manual) {
+                let target = getActive();
+                let z = width / 1800; 
+                if(bullets.length > 0) { target = bullets[0]; z = z * 0.8; }
+                if(target) {
+                    camera.targetX = target.x - (width / 2) / z;
+                    camera.targetY = target.y - (height / 2) / z;
+                    camera.targetZoom = z;
+                }
+                camera.x += (camera.targetX - camera.x) * 0.08;
+                camera.y += (camera.targetY - camera.y) * 0.08;
+                camera.zoom += (camera.targetZoom - camera.zoom) * 0.05;
+            }
+            camera.zoom = Math.max(0.6, Math.min(camera.zoom, 1.5)); 
+            camera.x = Math.max(0, Math.min(camera.x, WORLD_WIDTH - width/camera.zoom));
+            camera.y = Math.max(-500, Math.min(camera.y, 1000)); 
+
+            // --- LÓGICA DE APUNTADO SEPARADA ---
+            if(aimingDir !== 0 && ((gameMode === '1P' && currentTurn === 'A') || gameMode === '2P') && !shotFired) {
+                let p = getActive();
+                if(p && p.state !== 'dead') {
+                    // Ambos: Arriba (aimingDir -1) = Disparar más al cielo (ángulo más negativo)
+                    p.angle += aimingDir * 0.03; 
+                    if(p.angle > 1.2) p.angle = 1.2;   
+                    if(p.angle < -1.4) p.angle = -1.4; 
+                }
+            }
+
+            // PINGÜINOS
+            let aliveA = 0; let aliveB = 0; let anyoneMoving = false;
+            penguins.forEach(p => {
+                if(p.state !== 'dead') { if(p.team === 'A') aliveA++; else aliveB++; }
+                p.x += p.velX; p.velX *= 0.92;
+                p.velY += GRAVITY; p.y += p.velY;
+
+                let tY = 99999;
+                if(p.x >= 0 && p.x < WORLD_WIDTH) tY = terrain[Math.floor(p.x)];
+                
+                if(p.state === 'dead') { p.angle += 0.1; } else {
+                    if(p.y > tY && p.velY > 0 && tY < 90000) { p.y = tY; p.velY = 0; }
+                    if(p.y > WORLD_HEIGHT + 100) p.state = 'dead';
+                }
+                if(Math.abs(p.velX) > 0.05 || Math.abs(p.velY) > 0.05) anyoneMoving = true;
+                if(p.shootTimer > 0) p.shootTimer--;
+                if(p.y > WORLD_HEIGHT + 500) { p.velX=0; p.velY=0; }
+            });
+
+            if(aliveA === 0 || aliveB === 0) { endGame(aliveA > 0 ? "¡AZULES GANAN!" : "¡ROJOS GANAN!"); return; }
+
+            // BALAS
+            bullets.forEach(b => {
+                if(b.dead) return;
+                
+                // Granada Timer (Solo cuando está en el suelo)
+                if(b.type === 2 && b.grounded) {
+                    b.timer++;
+                    if(b.timer > 180) { // 3 Segundos (60fps * 3)
+                        createExplosion(b.x, b.y, 70, WEAPONS[2].dmg); b.dead = true;
+                    }
+                    return; 
+                }
+
+                b.x += b.vx; b.y += b.vy; b.vy += GRAVITY; 
+                
+                // Rotación visual proyectil
+                if(b.type === 1) { // Misil apunta hacia donde va
+                    b.rot = Math.atan2(b.vy, b.vx);
+                    if(b.vx < 0) b.rot += Math.PI; // Corrección para misil izquierda
+                } else {
+                    b.rot += 0.15;
+                }
+
+                let tY = 99999;
+                if(b.x >= 0 && b.x < WORLD_WIDTH) tY = terrain[Math.floor(b.x)];
+
+                // Colisión Suelo
+                if(b.y >= tY && tY < 90000) {
+                    if(b.type === 2) { // GRANADA (Se pega al suelo)
+                        if(!b.grounded) { b.grounded = true; b.y = tY - 5; b.vx = 0; b.vy = 0; }
+                    } else if (b.type === 3) { // RACIMO
+                        explodeRacimo(b.x, b.y); b.dead = true;
+                    } else { // BOLA, MISIL, FRAG
+                        let dmg = (b.type === 4) ? WEAPONS[4].dmg : WEAPONS[b.type].dmg;
+                        let rad = (b.type === 1) ? 60 : 50; 
+                        createExplosion(b.x, b.y, rad, dmg); b.dead = true;
+                    }
+                }
+
+                // Colisión Pingüinos
+                if(!b.grounded) { 
+                    penguins.forEach(p => {
+                        if(p.state !== 'dead') {
+                            let isSelf = (b.ownerId === p.id);
+                            let isSafeTime = (b.lifeTime < 15);
+                            if(isSelf && isSafeTime) return; 
+                            
+                            if(Math.hypot(b.x - p.x, b.y - (p.y - 20)) < 25) { 
+                                if(b.type === 2) { // GRANADA (Se pega al enemigo y para)
+                                     b.grounded = true; b.vx = 0; b.vy = 0; 
+                                } else if (b.type === 3) {
+                                     explodeRacimo(b.x, b.y); b.dead = true;
+                                } else {
+                                     let dmg = (b.type === 4) ? WEAPONS[4].dmg : WEAPONS[b.type].dmg;
+                                     let rad = (b.type === 1) ? 60 : 45;
+                                     createExplosion(b.x, b.y, rad, dmg); b.dead = true;
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                if(b.y > WORLD_HEIGHT + 200 || b.x < -100 || b.x > WORLD_WIDTH + 100) b.dead = true;
+                b.lifeTime++;
+                
+                // Timer de explosión en aire para Racimo (opcional, dejamos que toque suelo)
+            });
+            bullets = bullets.filter(b => !b.dead);
+
+            // CAMBIO DE TURNO
+            let projectilesFlying = bullets.filter(b => !b.grounded).length > 0;
+            if(!projectilesFlying && !anyoneMoving && shotFired) {
+                nextTurn();
+            }
+
+            if(isCharging) {
+                power = Math.min(power + 0.35, 25);
+                document.getElementById('power-fill').style.width = (power/25 * 100) + '%';
+            }
+        }
+
+        function drawGame() {
+            ctx.save();
+            ctx.scale(camera.zoom, camera.zoom);
+            ctx.translate(-camera.x, -camera.y);
+
+            ctx.fillStyle = "rgba(0, 50, 160, 0.65)";
+            ctx.fillRect(-1000, 1000, WORLD_WIDTH+2000, 2000); 
+
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath(); ctx.moveTo(0, WORLD_HEIGHT+1000);
+            for(let x=0; x<WORLD_WIDTH; x++) {
+                if(terrain[x] < 90000) ctx.lineTo(x, terrain[x]);
+                else ctx.lineTo(x, WORLD_HEIGHT+1000);
+            }
+            ctx.lineTo(WORLD_WIDTH, WORLD_HEIGHT+1000); ctx.fill();
+            ctx.strokeStyle = "#cceeff"; ctx.lineWidth = 6; ctx.stroke();
+
+            // PINGÜINOS
+            penguins.forEach(p => {
+                let flip = (p.team === 'A'); 
+                if(p.state === 'dead') {
+                    drawSpriteCentered(IMAGES.downed, p.x, p.y - 20, 40, 40, p.angle, flip);
+                    return;
+                }
+                let img = IMAGES.penguin;
+                if(p.shootTimer > 0) img = IMAGES.angry; 
+
+                // Cuerpo
+                drawSpriteCentered(img, p.x, p.y - 22, 40, 45, 0, flip);
+
+                // --- LÓGICA DE DIBUJO DE BAZOOKA SEPARADA ---
+                let drawRot;
+                if (flip) {
+                    // Team A (Mira Derecha, FLIP activo)
+                    // Si p.angle es negativo (arriba), el flip lo invierte visualmente a abajo.
+                    // Necesitamos invertirlo aquí para que se vea arriba.
+                    drawRot = -p.angle;
+                } else {
+                    // Team B (Mira Izquierda, NO FLIP)
+                    // El sprite de la bazooka por defecto mira a izquierda.
+                    // Si p.angle es negativo (arriba math), rotar canvas negativo es anti-horario (arriba-derecha visual).
+                    // Como el sprite mira a izquierda, rotar negativo levanta la punta.
+                    drawRot = p.angle; 
+                }
+
+                // Centrada en el pecho
+                drawWeaponCentered(IMAGES.bazooka, p.x, p.y - 20, 65, 32, drawRot, flip);
+
+                ctx.fillStyle = "red"; ctx.fillRect(p.x-15, p.y-60, 30, 4);
+                ctx.fillStyle = "#0f0"; ctx.fillRect(p.x-15, p.y-60, 30 * (p.hp/100), 4);
+                
+                if(p === getActive()) {
+                    ctx.fillStyle = p.team === 'A' ? "#00f2ff" : "#ff4444";
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y-70); ctx.lineTo(p.x-6, p.y-80); ctx.lineTo(p.x+6, p.y-80); ctx.fill();
+                }
+            });
+
+            bullets.forEach(b => {
+                let img = IMAGES.snowball; let s = 16; let flip = false;
+                if(b.type === 1) { img = IMAGES.missile; s = 30; if(b.vx > 0) flip = true; } // Misil se orienta
+                if(b.type === 2) { img = IMAGES.grenade; s = 16; }
+                if(b.type === 3) { img = IMAGES.cluster; s = 22; }
+                if(b.type === 4) { img = IMAGES.fragment; s = 12; }
+                
+                drawSpriteCentered(img, b.x, b.y, s, (b.type===1?15:s), b.rot, flip);
+            });
+            ctx.restore();
+        }
+
+        function drawSpriteCentered(img, x, y, w, h, rot, flip) {
+            if(!img.complete) return;
+            ctx.save();
+            ctx.translate(x, y);
+            if(flip) ctx.scale(-1, 1);
+            ctx.rotate(rot);
+            ctx.drawImage(img, -w/2, -h/2, w, h);
+            ctx.restore();
+        }
+
+        function drawWeaponCentered(img, x, y, w, h, rot, flip) {
+            if(!img.complete) return;
+            ctx.save();
+            ctx.translate(x, y);
+            if(flip) ctx.scale(-1, 1); // Flip X si es necesario
+            ctx.rotate(rot); 
+            
+            // Dibujar arma centrada en su pivote (centro geométrico)
+            // Offset X pequeño para que no se vea pegada a la espalda si se quiere
+            ctx.drawImage(img, -w/2 + 10, -h/2, w, h);
+            ctx.restore();
+        }
+
+        function getActive() {
+            let squad = penguins.filter(p => p.state !== 'dead' && p.team === currentTurn);
+            if(squad.length === 0) return null;
+            return currentTurn === 'A' ? squad[activeIdxA % squad.length] : squad[activeIdxB % squad.length];
+        }
+
+        function fire() {
+            let p = getActive();
+            if(!p) return;
+            
+            // CHEQUEO DE MUNICIÓN
+            let currentAmmo = teamAmmo[currentTurn][selectedWeapon];
+            if(currentAmmo <= 0) { 
+                selectedWeapon = 0; // Si no hay balas, cambia a bola nieve
+                selectWeapon(0); 
+                return; // Cancela este disparo para que el usuario sepa
+            }
+            if(selectedWeapon !== 0) {
+                teamAmmo[currentTurn][selectedWeapon]--; // Gastar bala
+                updateAmmoUI();
+            }
+
+            p.shootTimer = 60; 
+            
+            let flip = (p.team === 'A');
+            let dir = flip ? 1 : -1;
+            
+            let barrelLen = 40; 
+            let mx = p.x + Math.cos(p.angle) * barrelLen * dir;
+            let my = (p.y - 20) + Math.sin(p.angle) * barrelLen; 
+
+            let speed = power * 1.5;
+            let vx = Math.cos(p.angle) * speed * dir;
+            let vy = Math.sin(p.angle) * speed;
+
+            bullets.push({
+                x: mx, y: my, vx: vx, vy: vy,
+                type: selectedWeapon,
+                rot: 0, dead: false, grounded: false, timer: 0,
+                ownerId: p.id, lifeTime: 0, initPower: power
+            });
+            power = 0; isCharging = false; shotFired = true; camera.manual = false;
+            document.getElementById('power-bar-container').style.display = 'none';
+        }
+
+        function createExplosion(x, y, radius, damage) {
+            penguins.forEach(p => {
+                if(p.state === 'dead') return;
+                let dist = Math.hypot(p.x - x, p.y - (p.y - 20));
+                if(dist < radius + 30) {
+                    let force = (radius - dist) / radius;
+                    if(force < 0) force = 0;
+                    let angle = Math.atan2(p.y - 20 - y, p.x - x);
+                    p.velX += Math.cos(angle) * force * 15; 
+                    p.velY += Math.sin(angle) * force * 15 - 5; 
+                    p.hp -= damage * force; // Daño escalado por distancia
+                    if(p.hp <= 0) { p.hp = 0; p.state = 'dead'; }
+                }
+            });
+            ctx.save(); ctx.globalCompositeOperation = 'lighter';
+            ctx.fillStyle = "rgba(255, 200, 50, 0.8)"; ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+        }
+
+        function explodeRacimo(x, y) {
+            // Daño central
+            createExplosion(x, y, 40, WEAPONS[3].dmg); 
+            // Soltar fragmentos
+            for(let i=0; i<5; i++) {
+                bullets.push({
+                    x: x, y: y-10, vx: (Math.random()-0.5)*10, vy: -Math.random()*8-2,
+                    type: 4, rot: 0, dead: false, grounded: false, timer: 0, // TYPE 4 = FRAG
+                    ownerId: -1, lifeTime: 999, initPower: 999
+                });
+            }
+        }
+
+        function nextTurn() {
+            shotFired = false; camera.manual = false;
+            currentTurn = currentTurn === 'A' ? 'B' : 'A';
+            updateTurnUI();
+            updateAmmoUI();
+            
+            // Ciclar pingüinos vivos
+            if(currentTurn === 'A') {
+                let start = activeIdxA;
+                do { activeIdxA++; } while (getActive() === null && activeIdxA < start + 20);
+            } else {
+                let start = activeIdxB;
+                do { activeIdxB++; } while (getActive() === null && activeIdxB < start + 20);
+            }
+            
+            if(currentTurn === 'B' && gameMode === '1P') setTimeout(cpuTurn, 1000);
+        }
+
+        function updateTurnUI() {
+            let el = document.getElementById('turn-indicator');
+            el.innerText = currentTurn === 'A' ? "TU TURNO" : "TURNO RIVAL";
+            el.style.borderColor = currentTurn === 'A' ? "#00f2ff" : "#ff4444";
+            el.style.color = currentTurn === 'A' ? "#00f2ff" : "#ff4444";
+        }
+
+        function cpuTurn() {
+            if(currentTurn !== 'B') return;
+            let cpu = getActive();
+            if(!cpu) { nextTurn(); return; }
+            
+            // IA Simplificada
+            cpu.angle = -0.3 - Math.random()*0.4; 
+            
+            // Elegir arma con munición
+            let availableWeapons = [0];
+            let ammo = teamAmmo['B'];
+            if(ammo[1]>0) availableWeapons.push(1);
+            if(ammo[2]>0) availableWeapons.push(2);
+            if(ammo[3]>0) availableWeapons.push(3);
+            
+            selectWeapon(availableWeapons[Math.floor(Math.random()*availableWeapons.length)]);
+            
+            isCharging = true;
+            let targetPower = 15 + Math.random() * 8; 
+            let interval = setInterval(() => {
+                power += 0.5;
+                if(power >= targetPower) { clearInterval(interval); fire(); }
+            }, 30);
+        }
+        
+        function endGame(msg) {
+            gameState = 'MENU';
+            document.getElementById('game-ui').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'flex';
+            document.getElementById('menu-start').style.display = 'block';
+            document.getElementById('menu-modes').style.display = 'none';
+            let winEl = document.getElementById('win-msg');
+            winEl.innerText = msg;
+            winEl.style.display = 'block';
+        }
+
+        // --- CONTROLES ---
+        const btnFire = document.getElementById('btn-fire');
+        function canControl() {
+            if (shotFired) return false;
+            if (gameMode === '1P' && currentTurn === 'B') return false;
+            return true;
+        }
+        btnFire.onpointerdown = (e) => { 
+            e.preventDefault(); 
+            if(canControl()) { isCharging = true; document.getElementById('power-bar-container').style.display='block'; }
+        };
+        btnFire.onpointerup = (e) => { e.preventDefault(); if(isCharging) fire(); };
+
+        document.getElementById('btn-up').onpointerdown = (e) => { e.preventDefault(); aimingDir = -1; };
+        document.getElementById('btn-up').onpointerup = (e) => { e.preventDefault(); aimingDir = 0; };
+        document.getElementById('btn-down').onpointerdown = (e) => { e.preventDefault(); aimingDir = 1; };
+        document.getElementById('btn-down').onpointerup = (e) => { e.preventDefault(); aimingDir = 0; };
+        document.body.onpointerup = (e) => { if(e.target.className !== 'game-btn') aimingDir = 0; if(isCharging) fire(); };
+
+        // CÁMARA TÁCTIL
+        canvas.addEventListener('touchstart', e => {
+            if(e.touches.length === 1) {
+                touchStart.x = e.touches[0].clientX; touchStart.y = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                touchStart.d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            }
+            camera.manual = true;
+        }, {passive: false});
+
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if(e.touches.length === 1) {
+                let dx = e.touches[0].clientX - touchStart.x;
+                let dy = e.touches[0].clientY - touchStart.y;
+                camera.x -= dx / camera.zoom;
+                camera.y -= dy / camera.zoom;
+                touchStart.x = e.touches[0].clientX; touchStart.y = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                let d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                let zoomFactor = d / touchStart.d;
+                camera.zoom *= zoomFactor;
+                camera.zoom = Math.max(0.4, Math.min(camera.zoom, 1.5));
+                touchStart.d = d;
+            }
+        }, {passive: false});
+    </script>
+</body>
+</html>
