@@ -29,9 +29,9 @@
         
         /* LOGO DEL JUEGO */
         #game-logo {
-            max-width: 20%;
+            max-width: 50%; /* Ajustado manualmente para que no tape */
             height: auto;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             filter: drop-shadow(0 0 15px #00f2ff);
             animation: floatLogo 3s ease-in-out infinite;
         }
@@ -147,7 +147,7 @@
             bored1: new Audio('dialogues/aburrido1.mp3'),
             bored2: new Audio('dialogues/aburrido2.mp3'),
             bored3: new Audio('dialogues/aburrido3.mp3'),
-            no: new Audio('dialogues/No.mp3') // NUEVO AUDIO
+            no: new Audio('dialogues/No.mp3')
         };
         Object.values(AUDIO).forEach(s => { s.load(); s.volume = 0.8; });
         
@@ -332,29 +332,30 @@
 
             let aliveA = 0; let aliveB = 0; let anyoneMoving = false;
             penguins.forEach(p => {
-                if(p.state !== 'dead') { if(p.team === 'A') aliveA++; else aliveB++; }
-                p.x += p.velX; p.velX *= 0.92;
-                p.velY += GRAVITY; p.y += p.velY;
+                if(p.state !== 'dead') { 
+                    if(p.team === 'A') aliveA++; else aliveB++; 
+                    p.x += p.velX; p.velX *= 0.92;
+                    p.velY += GRAVITY; p.y += p.velY;
 
-                let tY = 99999;
-                if(p.x >= 0 && p.x < WORLD_WIDTH) tY = terrain[Math.floor(p.x)];
-                
-                // MUERTE POR AGUA
-                if(p.y > WATER_LEVEL + 50 && p.state !== 'dead') {
-                     p.state = 'dead';
-                     p.hp = 0;
-                     playSound('no');
-                }
-
-                if(p.state === 'dead') { p.angle += 0.1; } else {
+                    let tY = 99999;
+                    if(p.x >= 0 && p.x < WORLD_WIDTH) tY = terrain[Math.floor(p.x)];
+                    
                     if(p.y > tY && p.velY > 0 && tY < 90000) { p.y = tY; p.velY = 0; }
-                    // Si cae muy abajo, asegurar muerte
-                    if(p.y > WORLD_HEIGHT + 100) {
-                        if(p.state !== 'dead') playSound('no'); 
-                        p.state = 'dead';
+                    
+                    // MUERTE POR AGUA
+                    if(p.y > WATER_LEVEL + 50) {
+                        p.state = 'dead'; p.hp = 0; playSound('no');
                     }
+                } else {
+                    // Pingüino muerto: animación simple
+                    p.angle += 0.1; 
                 }
-                if(Math.abs(p.velX) > 0.05 || Math.abs(p.velY) > 0.05) anyoneMoving = true;
+                
+                // CORRECCIÓN BUG TURNO: Solo contar movimiento de los VIVOS
+                if(p.state !== 'dead') {
+                    if(Math.abs(p.velX) > 0.05 || Math.abs(p.velY) > 0.05) anyoneMoving = true;
+                }
+                
                 if(p.shootTimer > 0) p.shootTimer--;
             });
 
@@ -363,30 +364,24 @@
             bullets.forEach(b => {
                 if(b.dead) return;
                 
-                // DESAPARECER SI TOCA AGUA
-                if(b.y > WATER_LEVEL + 20) {
-                    b.dead = true;
-                    // Aquí se podría poner un sonido de "splash"
-                    return; 
-                }
-
-                if(b.type === 2) { 
-                    if(b.hasCollided) {
-                        b.timer++;
-                        if(b.timer > 180) { 
-                            createExplosion(b.x, b.y, 70, WEAPONS[2].dmg, WEAPONS[2].kb); 
-                            b.dead = true; 
-                        }
+                // Si la granada ha parado (grounded), contar tiempo
+                if(b.type === 2 && b.grounded) {
+                    b.timer++;
+                    if(b.timer > 180) { 
+                        createExplosion(b.x, b.y, 70, WEAPONS[2].dmg, WEAPONS[2].kb); 
+                        b.dead = true; 
                     }
-                } else if(b.type === 3) { 
-                    if(b.lifeTime > 240) { 
-                        explodeRacimo(b.x, b.y); b.dead = true; 
-                    }
+                    return; // No actualizar física si está parada
                 }
+                
+                // Racimo explota por tiempo
+                if(b.type === 3 && b.lifeTime > 240) { explodeRacimo(b.x, b.y); b.dead = true; }
 
                 if(!b.dead) {
                     b.x += b.vx; b.y += b.vy; b.vy += GRAVITY; 
                     
+                    if(b.y > WATER_LEVEL + 20) { b.dead = true; return; }
+
                     if(b.type === 1) { 
                         b.rot = Math.atan2(b.vy, b.vx) + Math.PI/2;
                     } else {
@@ -396,21 +391,27 @@
                     let tY = 99999;
                     if(b.x >= 0 && b.x < WORLD_WIDTH) tY = terrain[Math.floor(b.x)];
                     
+                    // COLISIÓN MEJORADA (ICEBERG SÓLIDO)
                     let isHit = false;
                     if(tY < 90000) { 
-                        let bottomY = tY + ICE_DEPTH;
-                        if(b.y >= tY && b.y <= bottomY) {
-                            isHit = true;
-                        }
+                        // Choca si está dentro del bloque de hielo
+                        if(b.y >= tY && b.y <= tY + ICE_DEPTH) { isHit = true; }
                     }
 
                     if(isHit) {
                         if(b.type === 2) { 
-                            if(!b.grounded) { 
-                                b.grounded = true; b.hasCollided = true; 
-                                b.y = tY - 5; 
-                                b.vx *= 0.5; b.vy = -b.vy * 0.4; 
-                                if(Math.abs(b.vy) < 1) { b.vy = 0; b.vx = 0; }
+                            b.hasCollided = true; // Inicia la cuenta regresiva lógica si hiciera falta, aunque aquí usamos grounded para parar
+                            // REBOTE BAJO (Corrección solicitada)
+                            if(Math.abs(b.vy) > 2) {
+                                // Sigue rebotando
+                                b.y = tY - 5; // Sacar del hielo para que no traspase
+                                b.vy = -b.vy * 0.3; // Rebote bajo (antes 0.5)
+                                b.vx *= 0.6; // Fricción
+                            } else {
+                                // Se detiene
+                                b.grounded = true; 
+                                b.y = tY - 5;
+                                b.vx = 0; b.vy = 0;
                             }
                         } else if (b.type === 3) { 
                              explodeRacimo(b.x, b.y); b.dead = true;
@@ -421,7 +422,7 @@
                         }
                     }
 
-                    if(!b.dead) { 
+                    if(!b.dead && !b.grounded) { 
                         penguins.forEach(p => {
                             if(p.state !== 'dead') {
                                 let isSelf = (b.ownerId === p.id);
@@ -450,7 +451,9 @@
             });
             bullets = bullets.filter(b => !b.dead);
 
-            let projectilesFlying = bullets.filter(b => !b.grounded || (b.type === 2 && !b.dead)).length > 0;
+            // CORRECCIÓN BUG TURNO: Ignorar proyectiles "muertos" o parados
+            let projectilesFlying = bullets.filter(b => !b.grounded && !b.dead).length > 0;
+            
             if(!projectilesFlying && !anyoneMoving && shotFired) {
                 nextTurn();
             }
@@ -509,16 +512,11 @@
                     return;
                 }
                 
-                // GUÍA DE APUNTADO CORREGIDA
+                // GUÍA DE APUNTADO
                 if(p === getActive() && !shotFired) {
                     ctx.save();
                     ctx.translate(p.x, p.y - 20);
-                    
-                    // Si es equipo A (flip=true), miran a la derecha, ángulo normal.
-                    // Si es equipo B (flip=false), miran a la izquierda.
-                    // El truco es NO usar scale(-1,1) para el cono, sino rotarlo.
-                    
-                    if(!flip) ctx.scale(-1, 1); // Solo volteamos si es equipo B para que apunte izquierda
+                    if(!flip) ctx.scale(-1, 1); 
                     
                     ctx.beginPath();
                     ctx.moveTo(0,0);
