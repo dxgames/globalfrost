@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Frost 2.8 - DX GAMES</title>
+    <title>Global Frost 1.0 - DX GAMES</title>
     <style>
         body { 
-            margin: 0; overflow: hidden; background: #000; 
+            margin: 0; overflow: hidden; background: #051025; 
             font-family: 'Segoe UI', sans-serif; 
             -webkit-user-select: none; user-select: none; touch-action: none;
             width: 100vw; height: 100vh;
@@ -100,7 +100,7 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        // --- ASSETS VISUALES ---
+        // --- ASSETS ---
         const IMAGES = {
             penguin: new Image(), angry: new Image(), downed: new Image(),
             bazooka: new Image(), snowball: new Image(), grenade: new Image(),
@@ -117,7 +117,6 @@
         IMAGES.missile.src = 'https://i.postimg.cc/FzGmp5g8/misil.png';
         IMAGES.bg.src = 'https://i.postimg.cc/Hkmp0nt1/fondo.jpg';
 
-        // --- SISTEMA DE AUDIO ---
         const AUDIO = {
             fire: new Audio('dialogues/fire.mp3'),
             victory: new Audio('dialogues/victory.mp3'),
@@ -128,34 +127,29 @@
             bored2: new Audio('dialogues/aburrido2.mp3'),
             bored3: new Audio('dialogues/aburrido3.mp3')
         };
-        // Precarga y volumen
         Object.values(AUDIO).forEach(s => { s.load(); s.volume = 0.8; });
         
-        let lastAimSound = 0;
         function playSound(name) {
             if(AUDIO[name]) {
-                if(name === 'aim') { // Evitar ametralladora de sonidos
-                    if(Date.now() - lastAimSound < 200) return;
-                    lastAimSound = Date.now();
-                }
-                // Clonar para permitir sonidos superpuestos
                 let s = AUDIO[name].cloneNode();
                 s.volume = AUDIO[name].volume;
+                if(name === 'fire') s.playbackRate = 0.9 + Math.random() * 0.2; 
                 s.play().catch(e => console.log("Audio play prevented"));
             }
         }
 
-        // --- CONFIGURACIÓN ---
+        // --- CONSTANTES & VARIABLES ---
         const WORLD_WIDTH = 3000;
         const WORLD_HEIGHT = 1500;
         const GRAVITY = 0.35; 
+        const WATER_LEVEL = 1000;
         
         const WEAPONS = [
-            { name: "BOLA", dmg: 5, ammo: 999 },    
-            { name: "MISIL", dmg: 15, ammo: 5 },    
-            { name: "GRANADA", dmg: 20, ammo: 5 },  
-            { name: "RACIMO", dmg: 20, ammo: 5 },   
-            { name: "FRAG", dmg: 15, ammo: 0 }      
+            { name: "BOLA", dmg: 15, ammo: 999, kb: 5 },    
+            { name: "MISIL", dmg: 25, ammo: 5, kb: 10 },    
+            { name: "GRANADA", dmg: 35, ammo: 5, kb: 10 },  
+            { name: "RACIMO", dmg: 45, ammo: 5, kb: 20 },   
+            { name: "FRAG", dmg: 25, ammo: 0, kb: 10 }      
         ];
 
         let width, height;
@@ -170,7 +164,8 @@
         let power = 0, isCharging = false, shotFired = false;
         let aimingDir = 0; 
         
-        let idleTimer = 0; // Timer para aburrimiento
+        let idleTimer = 0;
+        let globalTime = 0;
         
         let camera = { x: 0, y: 0, zoom: 1, targetX: 0, targetY: 0, targetZoom: 1, manual: false };
         let touchStart = { x:0, y:0, d:0 };
@@ -195,7 +190,6 @@
             camera.targetY = camera.y;
         }
 
-        // --- GAMEPLAY SETUP ---
         window.showModes = () => { document.getElementById('menu-start').style.display = 'none'; document.getElementById('menu-modes').style.display = 'flex'; }
         window.hideModes = () => { document.getElementById('menu-modes').style.display = 'none'; document.getElementById('menu-start').style.display = 'block'; }
         window.startGame = (mode) => {
@@ -204,7 +198,7 @@
             document.getElementById('win-msg').style.display = 'none';
             document.getElementById('game-ui').style.display = 'block';
             gameState = 'PLAYING';
-            playSound('start'); // Audio inicio
+            playSound('start'); 
             resetGame();
         };
         window.selectWeapon = (id) => {
@@ -235,6 +229,7 @@
             spawnTeam('A', 100, 900); 
             spawnTeam('B', 2100, 2900); 
             fitScreenToWorld();
+            snapCameraToActive();
         }
 
         function generateTerrain() {
@@ -261,7 +256,6 @@
             }
         }
 
-        // --- BUCLE ---
         function loop() {
             if(IMAGES.bg.complete) ctx.drawImage(IMAGES.bg, 0, 0, width, height);
             else { ctx.fillStyle = "#051025"; ctx.fillRect(0,0,width,height); }
@@ -273,20 +267,19 @@
         loop();
 
         function update() {
-            // TIMER DE ABURRIMIENTO (Solo en turno del jugador)
+            globalTime += 0.05;
+
             if(!shotFired && bullets.length === 0 && (gameMode === '2P' || currentTurn === 'A')) {
                 idleTimer++;
-                // 7 segundos a 60fps = 420 frames
                 if(idleTimer > 420) {
                     let r = Math.random();
                     if(r < 0.33) playSound('bored1');
                     else if(r < 0.66) playSound('bored2');
                     else playSound('bored3');
-                    idleTimer = 0; // Reset para que no spamee
+                    idleTimer = 0; 
                 }
             }
 
-            // CÁMARA
             if(!camera.manual) {
                 let target = getActive();
                 let z = width / 1800; 
@@ -296,15 +289,14 @@
                     camera.targetY = target.y - (height / 2) / z;
                     camera.targetZoom = z;
                 }
-                camera.x += (camera.targetX - camera.x) * 0.08;
-                camera.y += (camera.targetY - camera.y) * 0.08;
+                camera.x += (camera.targetX - camera.x) * 0.1;
+                camera.y += (camera.targetY - camera.y) * 0.1;
                 camera.zoom += (camera.targetZoom - camera.zoom) * 0.05;
             }
             camera.zoom = Math.max(0.6, Math.min(camera.zoom, 1.5)); 
             camera.x = Math.max(0, Math.min(camera.x, WORLD_WIDTH - width/camera.zoom));
             camera.y = Math.max(-500, Math.min(camera.y, 1000)); 
 
-            // APUNTADO
             if(aimingDir !== 0 && ((gameMode === '1P' && currentTurn === 'A') || gameMode === '2P') && !shotFired) {
                 resetIdle();
                 let p = getActive();
@@ -312,12 +304,9 @@
                     p.angle += aimingDir * 0.03; 
                     if(p.angle > 1.2) p.angle = 1.2;   
                     if(p.angle < -1.4) p.angle = -1.4; 
-                    // Sonido apuntando (limitado en playSound)
-                    playSound('aim');
                 }
             }
 
-            // PINGÜINOS
             let aliveA = 0; let aliveB = 0; let anyoneMoving = false;
             penguins.forEach(p => {
                 if(p.state !== 'dead') { if(p.team === 'A') aliveA++; else aliveB++; }
@@ -338,80 +327,92 @@
 
             if(aliveA === 0 || aliveB === 0) { endGame(aliveA > 0 ? "¡AZULES GANAN!" : "¡ROJOS GANAN!"); return; }
 
-            // BALAS
             bullets.forEach(b => {
                 if(b.dead) return;
                 
-                if(b.type === 2 && b.grounded) {
-                    b.timer++;
-                    if(b.timer > 180) { // 3 Segundos
-                        createExplosion(b.x, b.y, 70, WEAPONS[2].dmg); b.dead = true;
+                // LÓGICA DE TIEMPO (Granada y Racimo)
+                if(b.type === 2) { // Granada
+                    if(b.hasCollided) {
+                        b.timer++;
+                        // Explota a los 3 segundos (approx 180 frames) después del PRIMER choque
+                        if(b.timer > 180) { 
+                            createExplosion(b.x, b.y, 70, WEAPONS[2].dmg, WEAPONS[2].kb); 
+                            b.dead = true; 
+                        }
                     }
-                    return; 
-                }
-
-                b.x += b.vx; b.y += b.vy; b.vy += GRAVITY; 
-                
-                // ROTACIÓN VISUAL MISIL Y OTROS
-                if(b.type === 1) { 
-                    // El misil mira hacia arriba por defecto.
-                    // Math.atan2 da el ángulo de la velocidad.
-                    // Le sumamos 90 grados (PI/2) para compensar el sprite vertical.
-                    b.rot = Math.atan2(b.vy, b.vx) + Math.PI/2;
-                } else {
-                    b.rot += 0.15;
-                }
-
-                let tY = 99999;
-                if(b.x >= 0 && b.x < WORLD_WIDTH) tY = terrain[Math.floor(b.x)];
-
-                // Colisión Suelo
-                if(b.y >= tY && tY < 90000) {
-                    if(b.type === 2) { 
-                        if(!b.grounded) { b.grounded = true; b.y = tY - 5; b.vx = 0; b.vy = 0; }
-                    } else if (b.type === 3) { 
-                        explodeRacimo(b.x, b.y); b.dead = true;
-                    } else { 
-                        let dmg = (b.type === 4) ? WEAPONS[4].dmg : WEAPONS[b.type].dmg;
-                        let rad = (b.type === 1) ? 60 : 50; 
-                        createExplosion(b.x, b.y, rad, dmg); b.dead = true;
+                } else if(b.type === 3) { // Racimo
+                    // Explota a los 4 segundos de haber sido lanzado, independientemente de choques
+                    if(b.lifeTime > 240) { 
+                        explodeRacimo(b.x, b.y); b.dead = true; 
                     }
                 }
 
-                // Colisión Pingüinos
-                if(!b.grounded) { 
-                    penguins.forEach(p => {
-                        if(p.state !== 'dead') {
-                            let isSelf = (b.ownerId === p.id);
-                            let isSafeTime = (b.lifeTime < 15);
-                            if(isSelf && isSafeTime) return; 
-                            
-                            if(Math.hypot(b.x - p.x, b.y - (p.y - 20)) < 25) { 
-                                if(b.type === 2) { 
-                                     b.grounded = true; b.vx = 0; b.vy = 0; 
-                                } else if (b.type === 3) {
-                                     explodeRacimo(b.x, b.y); b.dead = true;
-                                } else {
-                                     let dmg = (b.type === 4) ? WEAPONS[4].dmg : WEAPONS[b.type].dmg;
-                                     let rad = (b.type === 1) ? 60 : 45;
-                                     createExplosion(b.x, b.y, rad, dmg); b.dead = true;
+                if(!b.dead) {
+                    b.x += b.vx; b.y += b.vy; b.vy += GRAVITY; 
+                    
+                    if(b.type === 1) { 
+                        b.rot = Math.atan2(b.vy, b.vx) + Math.PI/2;
+                    } else {
+                        b.rot += 0.15;
+                    }
+
+                    let tY = 99999;
+                    if(b.x >= 0 && b.x < WORLD_WIDTH) tY = terrain[Math.floor(b.x)];
+
+                    // COLISIÓN SUELO
+                    if(b.y >= tY && tY < 90000) {
+                        if(b.type === 2) { 
+                            if(!b.grounded) { 
+                                b.grounded = true; b.hasCollided = true; // Empieza cuenta atrás
+                                b.y = tY - 5; 
+                                // Rebote ligero o frenado
+                                b.vx *= 0.5; b.vy = -b.vy * 0.4; 
+                                if(Math.abs(b.vy) < 1) { b.vy = 0; b.vx = 0; }
+                            }
+                        } else if (b.type === 3) { 
+                             // Racimo también explota si toca suelo, o rebota? 
+                             // El usuario dijo "a los 4 seg aunque no choque", implica que el timer es principal.
+                             // Pero si choca suelo, explotemos para no complicar la jugabilidad
+                             explodeRacimo(b.x, b.y); b.dead = true;
+                        } else { 
+                            let stats = (b.type === 4) ? WEAPONS[4] : WEAPONS[b.type];
+                            let rad = (b.type === 1) ? 60 : 50; 
+                            createExplosion(b.x, b.y, rad, stats.dmg, stats.kb); b.dead = true;
+                        }
+                    }
+
+                    // COLISIÓN PINGÜINOS
+                    if(!b.dead) { 
+                        penguins.forEach(p => {
+                            if(p.state !== 'dead') {
+                                let isSelf = (b.ownerId === p.id);
+                                let isSafeTime = (b.lifeTime < 15);
+                                if(isSelf && isSafeTime) return; 
+                                
+                                if(Math.hypot(b.x - p.x, b.y - (p.y - 20)) < 25) { 
+                                    if(b.type === 2) { 
+                                         b.hasCollided = true; // Empieza cuenta atrás
+                                         // Rebota del pingüino
+                                         b.vx = -b.vx * 0.5; b.vy = -2; 
+                                    } else if (b.type === 3) {
+                                         explodeRacimo(b.x, b.y); b.dead = true;
+                                    } else {
+                                         let stats = (b.type === 4) ? WEAPONS[4] : WEAPONS[b.type];
+                                         let rad = (b.type === 1) ? 60 : 45;
+                                         createExplosion(b.x, b.y, rad, stats.dmg, stats.kb); b.dead = true;
+                                    }
                                 }
                             }
-                        }
-                    });
-                }
-                
-                if(b.y > WORLD_HEIGHT + 200 || b.x < -100 || b.x > WORLD_WIDTH + 100) b.dead = true;
-                b.lifeTime++;
-                
-                if(b.type === 2 && !b.grounded) {
-                    b.timer++; if(b.timer > 40) { explodeRacimo(b.x, b.y); b.dead = true; }
+                        });
+                    }
+                    
+                    if(b.y > WORLD_HEIGHT + 200 || b.x < -100 || b.x > WORLD_WIDTH + 100) b.dead = true;
+                    b.lifeTime++;
                 }
             });
             bullets = bullets.filter(b => !b.dead);
 
-            // CAMBIO DE TURNO
-            let projectilesFlying = bullets.filter(b => !b.grounded).length > 0;
+            let projectilesFlying = bullets.filter(b => !b.grounded || (b.type === 2 && !b.dead)).length > 0;
             if(!projectilesFlying && !anyoneMoving && shotFired) {
                 nextTurn();
             }
@@ -427,17 +428,45 @@
             ctx.scale(camera.zoom, camera.zoom);
             ctx.translate(-camera.x, -camera.y);
 
-            ctx.fillStyle = "rgba(0, 50, 160, 0.65)";
-            ctx.fillRect(-1000, 1000, WORLD_WIDTH+2000, 2000); 
-
+            // 1. TERRENO (Icebergs) - Dibujar primero para que el agua tape la parte de abajo
             ctx.fillStyle = "#ffffff";
-            ctx.beginPath(); ctx.moveTo(0, WORLD_HEIGHT+1000);
-            for(let x=0; x<WORLD_WIDTH; x++) {
-                if(terrain[x] < 90000) ctx.lineTo(x, terrain[x]);
-                else ctx.lineTo(x, WORLD_HEIGHT+1000);
+            ctx.beginPath();
+            
+            let started = false;
+            let startX = 0;
+            // Dibujamos el polígono del terreno muy profundo y con fondo plano
+            for(let x=0; x<=WORLD_WIDTH; x++) {
+                let h = (x < WORLD_WIDTH) ? terrain[x] : 99999;
+                
+                if(h < 90000 && !started) {
+                    ctx.moveTo(x, h); started = true; startX = x;
+                } else if ((h >= 90000 || x === WORLD_WIDTH) && started) {
+                    // Terminó un bloque de hielo. Cerramos el polígono hacia abajo y plano.
+                    let endX = x-1;
+                    let deepY = WORLD_HEIGHT + 200; // Profundidad plana
+                    
+                    ctx.lineTo(endX, deepY); // Esquina inferior derecha plana
+                    ctx.lineTo(startX, deepY); // Esquina inferior izquierda plana
+                    ctx.lineTo(startX, terrain[startX]); // Volver al inicio
+                    started = false;
+                } else if (started) {
+                    ctx.lineTo(x, h);
+                }
             }
-            ctx.lineTo(WORLD_WIDTH, WORLD_HEIGHT+1000); ctx.fill();
-            ctx.strokeStyle = "#cceeff"; ctx.lineWidth = 6; ctx.stroke();
+            ctx.fill();
+            // Borde del hielo
+            ctx.lineWidth = 4; ctx.strokeStyle = "#88ddff"; ctx.stroke();
+
+            // 2. AGUA (Superpuesta para efecto submarino)
+            let waterY = WATER_LEVEL + Math.sin(globalTime) * 5;
+            ctx.fillStyle = "rgba(0, 40, 150, 0.55)"; // Azul semitransparente
+            // Dibujar el agua cubriendo todo lo que esté debajo del nivel del mar
+            ctx.fillRect(-1000, waterY, WORLD_WIDTH+2000, 2000);
+            
+            // Línea de superficie del agua
+            ctx.beginPath(); ctx.moveTo(-1000, waterY); ctx.lineTo(WORLD_WIDTH+1000, waterY);
+            ctx.strokeStyle = "rgba(100, 200, 255, 0.5)"; ctx.lineWidth = 2; ctx.stroke();
+
 
             // PINGÜINOS
             penguins.forEach(p => {
@@ -449,44 +478,27 @@
                 let img = IMAGES.penguin;
                 if(p.shootTimer > 0) img = IMAGES.angry; 
 
-                // Cuerpo
-                drawSpriteCentered(img, p.x, p.y - 22, 40, 45, 0, flip);
+                // Flote visual
+                let floatY = Math.sin(globalTime + p.x) * 2;
+                
+                drawSpriteCentered(img, p.x, p.y - 22 + floatY, 40, 45, 0, flip);
 
-                // --- CORRECCIÓN DE APUNTADO VISUAL (FINAL) ---
-                let drawRot = 0;
-                if(flip) {
-                    // P1 (Team A): Mira Derecha (Flip).
-                    // Angulo -0.5 es Arriba.
-                    // Flip invierte X. Rotación normal -0.5 es anti-horaria (Arriba-Izquierda).
-                    // Al estar flippeado, necesitamos invertir la rotación visual para que coincida.
-                    drawRot = -p.angle; 
-                } else {
-                    // P2 (Team B): Mira Izquierda (No Flip).
-                    // Angulo -0.5 es Arriba.
-                    // Rotación canvas -0.5 es anti-horaria.
-                    // En un sprite que mira a la izquierda, rotar anti-horario baja la punta.
-                    // Necesitamos rotar horario (+) para subir la punta.
-                    // Por lo tanto, invertimos el signo del ángulo para el dibujo.
-                    drawRot = -p.angle; 
-                }
+                let drawRot = flip ? -p.angle : -p.angle; 
+                drawWeaponCentered(IMAGES.bazooka, p.x, p.y - 20 + floatY, 65, 32, drawRot, flip);
 
-                drawWeaponCentered(IMAGES.bazooka, p.x, p.y - 20, 65, 32, drawRot, flip);
-
-                ctx.fillStyle = "red"; ctx.fillRect(p.x-15, p.y-60, 30, 4);
-                ctx.fillStyle = "#0f0"; ctx.fillRect(p.x-15, p.y-60, 30 * (p.hp/100), 4);
+                ctx.fillStyle = "red"; ctx.fillRect(p.x-15, p.y-60 + floatY, 30, 4);
+                ctx.fillStyle = "#0f0"; ctx.fillRect(p.x-15, p.y-60 + floatY, 30 * (p.hp/100), 4);
                 
                 if(p === getActive()) {
                     ctx.fillStyle = p.team === 'A' ? "#00f2ff" : "#ff4444";
-                    ctx.beginPath(); ctx.moveTo(p.x, p.y-70); ctx.lineTo(p.x-6, p.y-80); ctx.lineTo(p.x+6, p.y-80); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y-70+floatY); ctx.lineTo(p.x-6, p.y-80+floatY); ctx.lineTo(p.x+6, p.y-80+floatY); ctx.fill();
                 }
             });
 
+            // PROYECTILES
             bullets.forEach(b => {
                 let img = IMAGES.snowball; let s = 16; let flip = false;
-                if(b.type === 1) { 
-                    img = IMAGES.missile; s = 30; 
-                    // No usamos flip para misil, usamos rotación completa (360) calculada en update
-                } 
+                if(b.type === 1) { img = IMAGES.missile; s = 30; } 
                 if(b.type === 2) { img = IMAGES.grenade; s = 16; }
                 if(b.type === 3) { img = IMAGES.cluster; s = 22; }
                 if(b.type === 4) { img = IMAGES.fragment; s = 12; }
@@ -521,6 +533,16 @@
             if(squad.length === 0) return null;
             return currentTurn === 'A' ? squad[activeIdxA % squad.length] : squad[activeIdxB % squad.length];
         }
+        
+        function snapCameraToActive() {
+            let t = getActive();
+            if(t) {
+                camera.targetX = t.x - (width/2);
+                camera.targetY = t.y - (height/2);
+                camera.x = camera.targetX;
+                camera.y = camera.targetY;
+            }
+        }
 
         function fire() {
             resetIdle();
@@ -528,11 +550,7 @@
             if(!p) return;
             
             let currentAmmo = teamAmmo[currentTurn][selectedWeapon];
-            if(currentAmmo <= 0) { 
-                selectedWeapon = 0; 
-                selectWeapon(0); 
-                return; 
-            }
+            if(currentAmmo <= 0) { selectedWeapon = 0; selectWeapon(0); return; }
             if(selectedWeapon !== 0) teamAmmo[currentTurn][selectedWeapon]--; 
             updateAmmoUI();
 
@@ -553,33 +571,39 @@
                 x: mx, y: my, vx: vx, vy: vy,
                 type: selectedWeapon,
                 rot: 0, dead: false, grounded: false, timer: 0,
-                ownerId: p.id, lifeTime: 0, initPower: power
+                ownerId: p.id, lifeTime: 0, initPower: power,
+                hasCollided: false
             });
             
-            playSound('fire'); // Audio Disparo
+            playSound('fire'); 
             
             power = 0; isCharging = false; shotFired = true; camera.manual = false;
             document.getElementById('power-bar-container').style.display = 'none';
         }
 
-        function createExplosion(x, y, radius, damage) {
+        function createExplosion(x, y, radius, damage, knockbackMulti) {
             let hitAnyone = false;
             penguins.forEach(p => {
                 if(p.state === 'dead') return;
                 let dist = Math.hypot(p.x - x, p.y - (p.y - 20));
+                
                 if(dist < radius + 30) {
                     hitAnyone = true;
                     let force = (radius - dist) / radius;
-                    if(force < 0) force = 0;
+                    if(force < 0) force = 0; 
+                    if(force > 0) force = 0.2 + (force * 0.8);
+
                     let angle = Math.atan2(p.y - 20 - y, p.x - x);
-                    p.velX += Math.cos(angle) * force * 15; 
-                    p.velY += Math.sin(angle) * force * 15 - 5; 
+                    p.velX += Math.cos(angle) * force * knockbackMulti; 
+                    let upForce = Math.sin(angle) * force * knockbackMulti - 5;
+                    if(upForce < -18) upForce = -18; 
+                    p.velY += upForce;
+
                     p.hp -= damage * force; 
                     if(p.hp <= 0) { p.hp = 0; p.state = 'dead'; }
                 }
             });
-            
-            if(hitAnyone) playSound('hit'); // Audio Impacto
+            if(hitAnyone) playSound('hit');
 
             ctx.save(); ctx.globalCompositeOperation = 'lighter';
             ctx.fillStyle = "rgba(255, 200, 50, 0.8)"; ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI*2); ctx.fill();
@@ -587,12 +611,12 @@
         }
 
         function explodeRacimo(x, y) {
-            createExplosion(x, y, 40, WEAPONS[3].dmg); 
+            createExplosion(x, y, 40, WEAPONS[3].dmg, WEAPONS[3].kb); 
             for(let i=0; i<5; i++) {
                 bullets.push({
                     x: x, y: y-10, vx: (Math.random()-0.5)*10, vy: -Math.random()*8-2,
                     type: 4, rot: 0, dead: false, grounded: false, timer: 0, 
-                    ownerId: -1, lifeTime: 999, initPower: 999
+                    ownerId: -1, lifeTime: 999, initPower: 999, hasCollided: false
                 });
             }
         }
@@ -604,7 +628,7 @@
             updateTurnUI();
             updateAmmoUI();
             
-            playSound('start'); // Audio cambio turno
+            playSound('start'); 
             
             if(currentTurn === 'A') {
                 let start = activeIdxA;
@@ -613,7 +637,7 @@
                 let start = activeIdxB;
                 do { activeIdxB++; } while (getActive() === null && activeIdxB < start + 20);
             }
-            
+            snapCameraToActive();
             if(currentTurn === 'B' && gameMode === '1P') setTimeout(cpuTurn, 1000);
         }
 
@@ -659,8 +683,10 @@
             winEl.style.display = 'block';
         }
 
-        // --- CONTROLES ---
         const btnFire = document.getElementById('btn-fire');
+        const btnUp = document.getElementById('btn-up');
+        const btnDown = document.getElementById('btn-down');
+
         function canControl() {
             if (shotFired) return false;
             if (gameMode === '1P' && currentTurn === 'B') return false;
@@ -673,13 +699,20 @@
         };
         btnFire.onpointerup = (e) => { e.preventDefault(); if(isCharging) fire(); };
 
-        document.getElementById('btn-up').onpointerdown = (e) => { e.preventDefault(); aimingDir = -1; resetIdle(); };
-        document.getElementById('btn-up').onpointerup = (e) => { e.preventDefault(); aimingDir = 0; };
-        document.getElementById('btn-down').onpointerdown = (e) => { e.preventDefault(); aimingDir = 1; resetIdle(); };
-        document.getElementById('btn-down').onpointerup = (e) => { e.preventDefault(); aimingDir = 0; };
+        btnUp.onpointerdown = (e) => { 
+            e.preventDefault(); aimingDir = -1; resetIdle(); 
+            if(canControl()) playSound('aim'); 
+        };
+        btnUp.onpointerup = (e) => { e.preventDefault(); aimingDir = 0; };
+        
+        btnDown.onpointerdown = (e) => { 
+            e.preventDefault(); aimingDir = 1; resetIdle(); 
+            if(canControl()) playSound('aim'); 
+        };
+        btnDown.onpointerup = (e) => { e.preventDefault(); aimingDir = 0; };
+        
         document.body.onpointerup = (e) => { if(e.target.className !== 'game-btn') aimingDir = 0; if(isCharging) fire(); };
 
-        // CÁMARA TÁCTIL
         canvas.addEventListener('touchstart', e => {
             if(e.touches.length === 1) {
                 touchStart.x = e.touches[0].clientX; touchStart.y = e.touches[0].clientY;
