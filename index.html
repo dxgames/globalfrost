@@ -27,7 +27,6 @@
         
         .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(5,10,20,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; z-index: 100; transition: opacity 0.5s; }
         
-        /* v2.0: Reducción de tamaño del logo */
         #game-logo {
             max-width: 35%; 
             height: auto;
@@ -37,7 +36,6 @@
         }
         @keyframes floatLogo { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         
-        /* v2.0: Botones más pequeños */
         .btn { 
             pointer-events: auto; background: linear-gradient(180deg, #00f2ff22, #00889944); 
             border: 2px solid #00f2ff; padding: 12px 40px; margin: 10px; border-radius: 8px; 
@@ -129,7 +127,7 @@
         };
         IMAGES.penguin.src = 'https://i.postimg.cc/jjNLxmvq/pinguino.png';
         IMAGES.angry.src = 'https://i.postimg.cc/bvbsyWLd/enojado.png';
-        IMAGES.downed.src = 'https://i.postimg.cc/YSghrZ80/derribado.png'; // Usado para ASUSTADO/HERIDO y MUERTO
+        IMAGES.downed.src = 'https://i.postimg.cc/YSghrZ80/derribado.png'; 
         IMAGES.bazooka.src = 'https://i.postimg.cc/9fTrmK1Q/bazooka.png';
         IMAGES.snowball.src = 'https://i.postimg.cc/XvFpjmxy/boladenieve.png';
         IMAGES.grenade.src = 'https://i.postimg.cc/Lsfn9wvf/granada.png';
@@ -165,15 +163,14 @@
         const WORLD_HEIGHT = 1500;
         const GRAVITY = 0.35; 
         const WATER_LEVEL = 1000;
-        const ICE_DEPTH = 300; // v2.0: Reducido un poco
+        const ICE_DEPTH = 300; 
         
-        // v2.0: Nuevos valores de daño y empuje (kb)
         const WEAPONS = [
             { name: "BOLA", dmg: 30, ammo: 999, kb: 40 },      
             { name: "MISIL", dmg: 40, ammo: 5, kb: 40 },       
             { name: "GRANADA", dmg: 60, ammo: 5, kb: 60 },     
-            { name: "RACIMO", dmg: 60, ammo: 5, kb: 60 },      // Asumimos Racimo = Granada Principal en stats
-            { name: "FRAG", dmg: 40, ammo: 0, kb: 40 }         // Fragmentos del racimo
+            { name: "RACIMO", dmg: 60, ammo: 5, kb: 60 },      
+            { name: "FRAG", dmg: 40, ammo: 0, kb: 40 }         
         ];
 
         let width, height;
@@ -190,7 +187,7 @@
         
         let idleTimer = 0;
         let globalTime = 0;
-        let wind = 0; // v2.0: Variable de viento
+        let wind = 0; 
         
         let camera = { x: 0, y: 0, zoom: 1, targetX: 0, targetY: 0, targetZoom: 1, manual: false };
         let touchStart = { x:0, y:0, d:0 };
@@ -206,7 +203,7 @@
         resize();
 
         function fitScreenToWorld() {
-            let desiredVisibleWidth = 2500; // v2.0: Zoom alejado (más contenido visible)
+            let desiredVisibleWidth = 2500; 
             camera.zoom = width / desiredVisibleWidth;
             camera.x = (WORLD_WIDTH / 2) - (width / 2) / camera.zoom;
             camera.y = (WORLD_HEIGHT * 0.4); 
@@ -217,7 +214,20 @@
 
         window.showModes = () => { document.getElementById('menu-start').style.display = 'none'; document.getElementById('menu-modes').style.display = 'flex'; }
         window.hideModes = () => { document.getElementById('menu-modes').style.display = 'none'; document.getElementById('menu-start').style.display = 'block'; }
+        
         window.startGame = (mode) => {
+            // PANTALLA COMPLETA Y HORIZONTAL
+            let elem = document.documentElement;
+            try {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen().then(() => {
+                        if(screen.orientation && screen.orientation.lock) {
+                            screen.orientation.lock('landscape').catch(e => console.log("Giro no permitido por dispositivo"));
+                        }
+                    }).catch(e => console.log("Fullscreen no permitido"));
+                }
+            } catch(e) { console.log(e); }
+
             gameMode = mode;
             document.getElementById('main-menu').style.display = 'none';
             document.getElementById('win-msg').style.display = 'none';
@@ -226,6 +236,7 @@
             playSound('start'); 
             resetGame();
         };
+
         window.selectWeapon = (id) => {
             selectedWeapon = id;
             resetIdle();
@@ -247,7 +258,7 @@
             currentTurn = 'A'; shotFired = false; activeIdxA = 0; activeIdxB = 0;
             aimingDir = 0; camera.manual = false; 
             teamAmmo = { A: [999,5,5,5], B: [999,5,5,5] }; 
-            wind = (Math.random() - 0.5) * 0.08; // Viento inicial
+            wind = (Math.random() - 0.5) * 0.08; 
             updateTurnUI();
             updateAmmoUI();
             generateTerrain();
@@ -257,8 +268,8 @@
             fitScreenToWorld();
             snapCameraToActive();
             
-            // Generar partículas iniciales
-            for(let i=0; i<100; i++) {
+            // MÁS PARTÍCULAS
+            for(let i=0; i<180; i++) {
                 particles.push({
                     x: Math.random() * WORLD_WIDTH,
                     y: Math.random() * WORLD_HEIGHT,
@@ -288,7 +299,7 @@
                     x: x, y: 0, team: team, hp: 100,
                     angle: -0.5, velX: 0, velY: 0, state: 'idle', 
                     radius: 20, id: Math.random(), 
-                    shootTimer: 0, hurtTimer: 0 // v2.0 timers
+                    shootTimer: 0, hurtTimer: 0 
                 });
             }
         }
@@ -306,10 +317,9 @@
         function update() {
             globalTime += 0.05;
 
-            // v2.0: Partículas de nieve
             particles.forEach(p => {
                 p.y += p.speed;
-                p.x += wind * 20; // Se mueven con el viento
+                p.x += wind * 20; 
                 if(p.y > WORLD_HEIGHT) p.y = -10;
                 if(p.x > WORLD_WIDTH) p.x = 0;
                 if(p.x < 0) p.x = WORLD_WIDTH;
@@ -328,7 +338,7 @@
 
             if(!camera.manual) {
                 let target = getActive();
-                let z = width / 2500; // Zoom ajustado
+                let z = width / 2500; 
                 if(bullets.length > 0) { target = bullets[0]; z = z * 0.8; }
                 if(target) {
                     camera.targetX = target.x - (width / 2) / z;
@@ -376,7 +386,6 @@
                     if(Math.abs(p.velX) > 0.05 || Math.abs(p.velY) > 0.05) anyoneMoving = true;
                 }
                 
-                // Timers de sprites
                 if(p.shootTimer > 0) p.shootTimer--;
                 if(p.hurtTimer > 0) p.hurtTimer--;
             });
@@ -386,22 +395,19 @@
             bullets.forEach(b => {
                 if(b.dead) return;
                 
-                // v2.0: VIENTO (Afecta solo bola y misil)
                 if(b.type === 0 || b.type === 1) {
                     b.vx += wind; 
                 }
 
-                // v2.0: GRANADA LÓGICA (Explota a los 2s del PRIMER toque)
                 if(b.type === 2) { 
                     if(b.hasCollided) {
                         b.timer++;
-                        // Explota exactamente a los 2 segundos (120 frames) aunque se mueva
                         if(b.timer > 120) { 
                             createExplosion(b.x, b.y, 70, WEAPONS[2].dmg, WEAPONS[2].kb); 
                             b.dead = true; 
                         }
                     }
-                } else if(b.type === 3 && b.lifeTime > 240) { // Racimo timer aire
+                } else if(b.type === 3 && b.lifeTime > 240) { 
                      explodeRacimo(b.x, b.y); b.dead = true; 
                 }
 
@@ -426,10 +432,9 @@
 
                     if(isHit) {
                         if(b.type === 2) { 
-                            // v2.0: Activar timer al primer toque
                             if(!b.hasCollided) {
                                 b.hasCollided = true;
-                                b.timer = 0; // Reset para asegurar 2s exactos
+                                b.timer = 0; 
                             }
 
                             if(Math.abs(b.vy) > 2) {
@@ -450,7 +455,7 @@
                         }
                     }
 
-                    if(!b.dead && (!b.grounded || b.type !== 2)) { // Seguir checkeando colisión pingüinos si se mueve O es granada
+                    if(!b.dead && (!b.grounded || b.type !== 2)) { 
                         penguins.forEach(p => {
                             if(p.state !== 'dead') {
                                 let isSelf = (b.ownerId === p.id);
@@ -459,7 +464,6 @@
                                 
                                 if(Math.hypot(b.x - p.x, b.y - (p.y - 20)) < 25) { 
                                     if(b.type === 2) { 
-                                         // v2.0: Activar timer al golpear pingüino
                                          if(!b.hasCollided) { b.hasCollided = true; b.timer = 0; }
                                          b.vx = -b.vx * 0.5; b.vy = -2; 
                                     } else if (b.type === 3) {
@@ -480,11 +484,8 @@
             });
             bullets = bullets.filter(b => !b.dead);
 
-            // Si es granada y el timer corre, NO se considera "proyectil en vuelo" para cambiar turno hasta que explote
-            // A menos que esté quieta esperando. Pero mejor esperar la explosión.
             let activeProjectiles = bullets.filter(b => !b.dead).length > 0;
             
-            // v2.0: Ajuste turno. Esperar a que exploten las granadas.
             if(!activeProjectiles && !anyoneMoving && shotFired) {
                 nextTurn();
             }
@@ -500,8 +501,8 @@
             ctx.scale(camera.zoom, camera.zoom);
             ctx.translate(-camera.x, -camera.y);
 
-            // PARTÍCULAS FONDO
-            ctx.fillStyle = "rgba(255,255,255,0.3)";
+            // PARTÍCULAS (Más visibles)
+            ctx.fillStyle = "rgba(255,255,255,0.75)";
             particles.forEach(p => {
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
             });
@@ -535,14 +536,12 @@
             penguins.forEach(p => {
                 let flip = (p.team === 'A'); 
                 if(p.state === 'dead') {
-                    // v2.0: Sprite derribado para muerto, semitransparente
                     ctx.globalAlpha = 0.6;
-                    drawSpriteCentered(IMAGES.downed, p.x, p.y - 10, 30, 30, p.angle, flip); // Más pequeño
+                    drawSpriteCentered(IMAGES.downed, p.x, p.y - 10, 30, 30, p.angle, flip); 
                     ctx.globalAlpha = 1;
                     return;
                 }
                 
-                // GUÍA
                 if(p === getActive() && !shotFired) {
                     ctx.save(); ctx.translate(p.x, p.y - 15);
                     if(!flip) ctx.scale(-1, 1); 
@@ -553,22 +552,19 @@
                     ctx.restore();
                 }
 
-                // v2.0: Lógica de SPRITES
                 let img = IMAGES.penguin;
-                if(p.hurtTimer > 0) img = IMAGES.downed; // Asustado/Herido
-                else if(p.shootTimer > 0 || isCharging && p === getActive()) img = IMAGES.angry; // Enojado disparando o cargando
+                if(p.hurtTimer > 0) img = IMAGES.downed; 
+                else if(p.shootTimer > 0 || isCharging && p === getActive()) img = IMAGES.angry; 
                 
                 let floatY = Math.sin(globalTime + p.x) * 2;
                 
-                // v2.0: Pingüinos más pequeños (30x35 antes 40x45)
                 drawSpriteCentered(img, p.x, p.y - 18 + floatY, 30, 35, 0, flip);
 
                 if(p.state !== 'dead' && p.hurtTimer <= 0) {
                      let drawRot = flip ? -p.angle : -p.angle; 
-                     drawWeaponCentered(IMAGES.bazooka, p.x, p.y - 15 + floatY, 50, 25, drawRot, flip); // Arma reducida
+                     drawWeaponCentered(IMAGES.bazooka, p.x, p.y - 15 + floatY, 50, 25, drawRot, flip); 
                 }
 
-                // Barras vida reducidas
                 ctx.fillStyle = "red"; ctx.fillRect(p.x-12, p.y-50 + floatY, 24, 3);
                 ctx.fillStyle = "#0f0"; ctx.fillRect(p.x-12, p.y-50 + floatY, 24 * (p.hp/100), 3);
                 
@@ -579,7 +575,7 @@
             });
 
             bullets.forEach(b => {
-                let img = IMAGES.snowball; let s = 12; let flip = false; // Reducidos
+                let img = IMAGES.snowball; let s = 12; let flip = false; 
                 if(b.type === 1) { img = IMAGES.missile; s = 24; } 
                 if(b.type === 2) { img = IMAGES.grenade; s = 12; }
                 if(b.type === 3) { img = IMAGES.cluster; s = 18; }
@@ -636,7 +632,7 @@
             if(selectedWeapon !== 0) teamAmmo[currentTurn][selectedWeapon]--; 
             updateAmmoUI();
 
-            p.shootTimer = 120; // v2.0: 2 segundos de cara enojada
+            p.shootTimer = 120; 
             
             let flip = (p.team === 'A');
             let dir = flip ? 1 : -1;
@@ -671,8 +667,7 @@
                 
                 if(dist < radius + 30) {
                     hitAnyone = true;
-                    // v2.0: Sprite asustado/herido
-                    p.hurtTimer = 120; // 2 segundos
+                    p.hurtTimer = 120; 
                     
                     let force = (radius - dist) / radius;
                     if(force < 0) force = 0; 
@@ -713,7 +708,6 @@
             shotFired = false; camera.manual = false;
             resetIdle();
             currentTurn = currentTurn === 'A' ? 'B' : 'A';
-            // v2.0: Cambiar dirección del viento
             wind = (Math.random() - 0.5) * 0.08; 
             
             updateTurnUI();
@@ -763,6 +757,14 @@
         }
         
         function endGame(msg) {
+            // SALIR DE PANTALLA COMPLETA Y RESTAURAR ROTACIÓN
+            if (document.exitFullscreen && document.fullscreenElement) {
+                document.exitFullscreen().catch(e => console.log(e));
+            }
+            if(screen.orientation && screen.orientation.unlock) {
+                screen.orientation.unlock();
+            }
+
             playSound('victory');
             gameState = 'MENU';
             document.getElementById('game-ui').style.display = 'none';
