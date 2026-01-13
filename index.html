@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Frost 2.7 - DX GAMES</title>
+    <title>Global Frost 2.8 - DX GAMES</title>
     <style>
         body { 
             margin: 0; overflow: hidden; background: #000; 
@@ -100,7 +100,7 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        // --- ASSETS ---
+        // --- ASSETS VISUALES ---
         const IMAGES = {
             penguin: new Image(), angry: new Image(), downed: new Image(),
             bazooka: new Image(), snowball: new Image(), grenade: new Image(),
@@ -117,18 +117,45 @@
         IMAGES.missile.src = 'https://i.postimg.cc/FzGmp5g8/misil.png';
         IMAGES.bg.src = 'https://i.postimg.cc/Hkmp0nt1/fondo.jpg';
 
+        // --- SISTEMA DE AUDIO ---
+        const AUDIO = {
+            fire: new Audio('dialogues/fire.mp3'),
+            victory: new Audio('dialogues/victory.mp3'),
+            start: new Audio('dialogues/yes_sir.mp3'),
+            aim: new Audio('dialogues/apuntando.mp3'),
+            hit: new Audio('dialogues/Auch.mp3'),
+            bored1: new Audio('dialogues/aburrido1.mp3'),
+            bored2: new Audio('dialogues/aburrido2.mp3'),
+            bored3: new Audio('dialogues/aburrido3.mp3')
+        };
+        // Precarga y volumen
+        Object.values(AUDIO).forEach(s => { s.load(); s.volume = 0.8; });
+        
+        let lastAimSound = 0;
+        function playSound(name) {
+            if(AUDIO[name]) {
+                if(name === 'aim') { // Evitar ametralladora de sonidos
+                    if(Date.now() - lastAimSound < 200) return;
+                    lastAimSound = Date.now();
+                }
+                // Clonar para permitir sonidos superpuestos
+                let s = AUDIO[name].cloneNode();
+                s.volume = AUDIO[name].volume;
+                s.play().catch(e => console.log("Audio play prevented"));
+            }
+        }
+
         // --- CONFIGURACIÓN ---
         const WORLD_WIDTH = 3000;
         const WORLD_HEIGHT = 1500;
         const GRAVITY = 0.35; 
         
-        // Configuración de Armas (Daño y Munición por equipo)
         const WEAPONS = [
-            { name: "BOLA", dmg: 5, ammo: 999 },    // 0
-            { name: "MISIL", dmg: 15, ammo: 5 },    // 1
-            { name: "GRANADA", dmg: 20, ammo: 5 },  // 2
-            { name: "RACIMO", dmg: 20, ammo: 5 },   // 3 (Frag dmg 15)
-            { name: "FRAG", dmg: 15, ammo: 0 }      // 4 (Interno)
+            { name: "BOLA", dmg: 5, ammo: 999 },    
+            { name: "MISIL", dmg: 15, ammo: 5 },    
+            { name: "GRANADA", dmg: 20, ammo: 5 },  
+            { name: "RACIMO", dmg: 20, ammo: 5 },   
+            { name: "FRAG", dmg: 15, ammo: 0 }      
         ];
 
         let width, height;
@@ -136,14 +163,14 @@
         let gameMode = '1P';
         let currentTurn = 'A';
         let penguins = [], bullets = [], terrain = [];
-        
-        // Munición compartida por equipo
         let teamAmmo = { A: [999,5,5,5], B: [999,5,5,5] };
         
         let activeIdxA = 0, activeIdxB = 0;
         let selectedWeapon = 0;
         let power = 0, isCharging = false, shotFired = false;
         let aimingDir = 0; 
+        
+        let idleTimer = 0; // Timer para aburrimiento
         
         let camera = { x: 0, y: 0, zoom: 1, targetX: 0, targetY: 0, targetZoom: 1, manual: false };
         let touchStart = { x:0, y:0, d:0 };
@@ -168,7 +195,7 @@
             camera.targetY = camera.y;
         }
 
-        // --- SETUP ---
+        // --- GAMEPLAY SETUP ---
         window.showModes = () => { document.getElementById('menu-start').style.display = 'none'; document.getElementById('menu-modes').style.display = 'flex'; }
         window.hideModes = () => { document.getElementById('menu-modes').style.display = 'none'; document.getElementById('menu-start').style.display = 'block'; }
         window.startGame = (mode) => {
@@ -177,12 +204,16 @@
             document.getElementById('win-msg').style.display = 'none';
             document.getElementById('game-ui').style.display = 'block';
             gameState = 'PLAYING';
+            playSound('start'); // Audio inicio
             resetGame();
         };
         window.selectWeapon = (id) => {
             selectedWeapon = id;
+            resetIdle();
             document.querySelectorAll('.w-btn').forEach((b, i) => b.className = i === id ? 'w-btn w-selected' : 'w-btn');
         }
+        
+        function resetIdle() { idleTimer = 0; }
 
         function updateAmmoUI() {
             let ammoData = teamAmmo[currentTurn];
@@ -196,15 +227,13 @@
             penguins = []; bullets = [];
             currentTurn = 'A'; shotFired = false; activeIdxA = 0; activeIdxB = 0;
             aimingDir = 0; camera.manual = false; 
-            teamAmmo = { A: [999,5,5,5], B: [999,5,5,5] }; // Reset Munición
+            teamAmmo = { A: [999,5,5,5], B: [999,5,5,5] }; 
             updateTurnUI();
             updateAmmoUI();
             generateTerrain();
             
-            // SPAWN P1 (Izq) y P2 (Der)
             spawnTeam('A', 100, 900); 
             spawnTeam('B', 2100, 2900); 
-            
             fitScreenToWorld();
         }
 
@@ -232,6 +261,7 @@
             }
         }
 
+        // --- BUCLE ---
         function loop() {
             if(IMAGES.bg.complete) ctx.drawImage(IMAGES.bg, 0, 0, width, height);
             else { ctx.fillStyle = "#051025"; ctx.fillRect(0,0,width,height); }
@@ -243,6 +273,19 @@
         loop();
 
         function update() {
+            // TIMER DE ABURRIMIENTO (Solo en turno del jugador)
+            if(!shotFired && bullets.length === 0 && (gameMode === '2P' || currentTurn === 'A')) {
+                idleTimer++;
+                // 7 segundos a 60fps = 420 frames
+                if(idleTimer > 420) {
+                    let r = Math.random();
+                    if(r < 0.33) playSound('bored1');
+                    else if(r < 0.66) playSound('bored2');
+                    else playSound('bored3');
+                    idleTimer = 0; // Reset para que no spamee
+                }
+            }
+
             // CÁMARA
             if(!camera.manual) {
                 let target = getActive();
@@ -261,14 +304,16 @@
             camera.x = Math.max(0, Math.min(camera.x, WORLD_WIDTH - width/camera.zoom));
             camera.y = Math.max(-500, Math.min(camera.y, 1000)); 
 
-            // --- LÓGICA DE APUNTADO SEPARADA ---
+            // APUNTADO
             if(aimingDir !== 0 && ((gameMode === '1P' && currentTurn === 'A') || gameMode === '2P') && !shotFired) {
+                resetIdle();
                 let p = getActive();
                 if(p && p.state !== 'dead') {
-                    // Ambos: Arriba (aimingDir -1) = Disparar más al cielo (ángulo más negativo)
                     p.angle += aimingDir * 0.03; 
                     if(p.angle > 1.2) p.angle = 1.2;   
                     if(p.angle < -1.4) p.angle = -1.4; 
+                    // Sonido apuntando (limitado en playSound)
+                    playSound('aim');
                 }
             }
 
@@ -297,10 +342,9 @@
             bullets.forEach(b => {
                 if(b.dead) return;
                 
-                // Granada Timer (Solo cuando está en el suelo)
                 if(b.type === 2 && b.grounded) {
                     b.timer++;
-                    if(b.timer > 180) { // 3 Segundos (60fps * 3)
+                    if(b.timer > 180) { // 3 Segundos
                         createExplosion(b.x, b.y, 70, WEAPONS[2].dmg); b.dead = true;
                     }
                     return; 
@@ -308,10 +352,12 @@
 
                 b.x += b.vx; b.y += b.vy; b.vy += GRAVITY; 
                 
-                // Rotación visual proyectil
-                if(b.type === 1) { // Misil apunta hacia donde va
-                    b.rot = Math.atan2(b.vy, b.vx);
-                    if(b.vx < 0) b.rot += Math.PI; // Corrección para misil izquierda
+                // ROTACIÓN VISUAL MISIL Y OTROS
+                if(b.type === 1) { 
+                    // El misil mira hacia arriba por defecto.
+                    // Math.atan2 da el ángulo de la velocidad.
+                    // Le sumamos 90 grados (PI/2) para compensar el sprite vertical.
+                    b.rot = Math.atan2(b.vy, b.vx) + Math.PI/2;
                 } else {
                     b.rot += 0.15;
                 }
@@ -321,11 +367,11 @@
 
                 // Colisión Suelo
                 if(b.y >= tY && tY < 90000) {
-                    if(b.type === 2) { // GRANADA (Se pega al suelo)
+                    if(b.type === 2) { 
                         if(!b.grounded) { b.grounded = true; b.y = tY - 5; b.vx = 0; b.vy = 0; }
-                    } else if (b.type === 3) { // RACIMO
+                    } else if (b.type === 3) { 
                         explodeRacimo(b.x, b.y); b.dead = true;
-                    } else { // BOLA, MISIL, FRAG
+                    } else { 
                         let dmg = (b.type === 4) ? WEAPONS[4].dmg : WEAPONS[b.type].dmg;
                         let rad = (b.type === 1) ? 60 : 50; 
                         createExplosion(b.x, b.y, rad, dmg); b.dead = true;
@@ -341,7 +387,7 @@
                             if(isSelf && isSafeTime) return; 
                             
                             if(Math.hypot(b.x - p.x, b.y - (p.y - 20)) < 25) { 
-                                if(b.type === 2) { // GRANADA (Se pega al enemigo y para)
+                                if(b.type === 2) { 
                                      b.grounded = true; b.vx = 0; b.vy = 0; 
                                 } else if (b.type === 3) {
                                      explodeRacimo(b.x, b.y); b.dead = true;
@@ -358,7 +404,9 @@
                 if(b.y > WORLD_HEIGHT + 200 || b.x < -100 || b.x > WORLD_WIDTH + 100) b.dead = true;
                 b.lifeTime++;
                 
-                // Timer de explosión en aire para Racimo (opcional, dejamos que toque suelo)
+                if(b.type === 2 && !b.grounded) {
+                    b.timer++; if(b.timer > 40) { explodeRacimo(b.x, b.y); b.dead = true; }
+                }
             });
             bullets = bullets.filter(b => !b.dead);
 
@@ -404,22 +452,24 @@
                 // Cuerpo
                 drawSpriteCentered(img, p.x, p.y - 22, 40, 45, 0, flip);
 
-                // --- LÓGICA DE DIBUJO DE BAZOOKA SEPARADA ---
-                let drawRot;
-                if (flip) {
-                    // Team A (Mira Derecha, FLIP activo)
-                    // Si p.angle es negativo (arriba), el flip lo invierte visualmente a abajo.
-                    // Necesitamos invertirlo aquí para que se vea arriba.
-                    drawRot = -p.angle;
+                // --- CORRECCIÓN DE APUNTADO VISUAL (FINAL) ---
+                let drawRot = 0;
+                if(flip) {
+                    // P1 (Team A): Mira Derecha (Flip).
+                    // Angulo -0.5 es Arriba.
+                    // Flip invierte X. Rotación normal -0.5 es anti-horaria (Arriba-Izquierda).
+                    // Al estar flippeado, necesitamos invertir la rotación visual para que coincida.
+                    drawRot = -p.angle; 
                 } else {
-                    // Team B (Mira Izquierda, NO FLIP)
-                    // El sprite de la bazooka por defecto mira a izquierda.
-                    // Si p.angle es negativo (arriba math), rotar canvas negativo es anti-horario (arriba-derecha visual).
-                    // Como el sprite mira a izquierda, rotar negativo levanta la punta.
-                    drawRot = p.angle; 
+                    // P2 (Team B): Mira Izquierda (No Flip).
+                    // Angulo -0.5 es Arriba.
+                    // Rotación canvas -0.5 es anti-horaria.
+                    // En un sprite que mira a la izquierda, rotar anti-horario baja la punta.
+                    // Necesitamos rotar horario (+) para subir la punta.
+                    // Por lo tanto, invertimos el signo del ángulo para el dibujo.
+                    drawRot = -p.angle; 
                 }
 
-                // Centrada en el pecho
                 drawWeaponCentered(IMAGES.bazooka, p.x, p.y - 20, 65, 32, drawRot, flip);
 
                 ctx.fillStyle = "red"; ctx.fillRect(p.x-15, p.y-60, 30, 4);
@@ -433,7 +483,10 @@
 
             bullets.forEach(b => {
                 let img = IMAGES.snowball; let s = 16; let flip = false;
-                if(b.type === 1) { img = IMAGES.missile; s = 30; if(b.vx > 0) flip = true; } // Misil se orienta
+                if(b.type === 1) { 
+                    img = IMAGES.missile; s = 30; 
+                    // No usamos flip para misil, usamos rotación completa (360) calculada en update
+                } 
                 if(b.type === 2) { img = IMAGES.grenade; s = 16; }
                 if(b.type === 3) { img = IMAGES.cluster; s = 22; }
                 if(b.type === 4) { img = IMAGES.fragment; s = 12; }
@@ -457,11 +510,8 @@
             if(!img.complete) return;
             ctx.save();
             ctx.translate(x, y);
-            if(flip) ctx.scale(-1, 1); // Flip X si es necesario
+            if(flip) ctx.scale(-1, 1); 
             ctx.rotate(rot); 
-            
-            // Dibujar arma centrada en su pivote (centro geométrico)
-            // Offset X pequeño para que no se vea pegada a la espalda si se quiere
             ctx.drawImage(img, -w/2 + 10, -h/2, w, h);
             ctx.restore();
         }
@@ -473,20 +523,18 @@
         }
 
         function fire() {
+            resetIdle();
             let p = getActive();
             if(!p) return;
             
-            // CHEQUEO DE MUNICIÓN
             let currentAmmo = teamAmmo[currentTurn][selectedWeapon];
             if(currentAmmo <= 0) { 
-                selectedWeapon = 0; // Si no hay balas, cambia a bola nieve
+                selectedWeapon = 0; 
                 selectWeapon(0); 
-                return; // Cancela este disparo para que el usuario sepa
+                return; 
             }
-            if(selectedWeapon !== 0) {
-                teamAmmo[currentTurn][selectedWeapon]--; // Gastar bala
-                updateAmmoUI();
-            }
+            if(selectedWeapon !== 0) teamAmmo[currentTurn][selectedWeapon]--; 
+            updateAmmoUI();
 
             p.shootTimer = 60; 
             
@@ -507,37 +555,43 @@
                 rot: 0, dead: false, grounded: false, timer: 0,
                 ownerId: p.id, lifeTime: 0, initPower: power
             });
+            
+            playSound('fire'); // Audio Disparo
+            
             power = 0; isCharging = false; shotFired = true; camera.manual = false;
             document.getElementById('power-bar-container').style.display = 'none';
         }
 
         function createExplosion(x, y, radius, damage) {
+            let hitAnyone = false;
             penguins.forEach(p => {
                 if(p.state === 'dead') return;
                 let dist = Math.hypot(p.x - x, p.y - (p.y - 20));
                 if(dist < radius + 30) {
+                    hitAnyone = true;
                     let force = (radius - dist) / radius;
                     if(force < 0) force = 0;
                     let angle = Math.atan2(p.y - 20 - y, p.x - x);
                     p.velX += Math.cos(angle) * force * 15; 
                     p.velY += Math.sin(angle) * force * 15 - 5; 
-                    p.hp -= damage * force; // Daño escalado por distancia
+                    p.hp -= damage * force; 
                     if(p.hp <= 0) { p.hp = 0; p.state = 'dead'; }
                 }
             });
+            
+            if(hitAnyone) playSound('hit'); // Audio Impacto
+
             ctx.save(); ctx.globalCompositeOperation = 'lighter';
             ctx.fillStyle = "rgba(255, 200, 50, 0.8)"; ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI*2); ctx.fill();
             ctx.restore();
         }
 
         function explodeRacimo(x, y) {
-            // Daño central
             createExplosion(x, y, 40, WEAPONS[3].dmg); 
-            // Soltar fragmentos
             for(let i=0; i<5; i++) {
                 bullets.push({
                     x: x, y: y-10, vx: (Math.random()-0.5)*10, vy: -Math.random()*8-2,
-                    type: 4, rot: 0, dead: false, grounded: false, timer: 0, // TYPE 4 = FRAG
+                    type: 4, rot: 0, dead: false, grounded: false, timer: 0, 
                     ownerId: -1, lifeTime: 999, initPower: 999
                 });
             }
@@ -545,11 +599,13 @@
 
         function nextTurn() {
             shotFired = false; camera.manual = false;
+            resetIdle();
             currentTurn = currentTurn === 'A' ? 'B' : 'A';
             updateTurnUI();
             updateAmmoUI();
             
-            // Ciclar pingüinos vivos
+            playSound('start'); // Audio cambio turno
+            
             if(currentTurn === 'A') {
                 let start = activeIdxA;
                 do { activeIdxA++; } while (getActive() === null && activeIdxA < start + 20);
@@ -573,10 +629,8 @@
             let cpu = getActive();
             if(!cpu) { nextTurn(); return; }
             
-            // IA Simplificada
             cpu.angle = -0.3 - Math.random()*0.4; 
             
-            // Elegir arma con munición
             let availableWeapons = [0];
             let ammo = teamAmmo['B'];
             if(ammo[1]>0) availableWeapons.push(1);
@@ -594,6 +648,7 @@
         }
         
         function endGame(msg) {
+            playSound('victory');
             gameState = 'MENU';
             document.getElementById('game-ui').style.display = 'none';
             document.getElementById('main-menu').style.display = 'flex';
@@ -613,13 +668,14 @@
         }
         btnFire.onpointerdown = (e) => { 
             e.preventDefault(); 
+            resetIdle();
             if(canControl()) { isCharging = true; document.getElementById('power-bar-container').style.display='block'; }
         };
         btnFire.onpointerup = (e) => { e.preventDefault(); if(isCharging) fire(); };
 
-        document.getElementById('btn-up').onpointerdown = (e) => { e.preventDefault(); aimingDir = -1; };
+        document.getElementById('btn-up').onpointerdown = (e) => { e.preventDefault(); aimingDir = -1; resetIdle(); };
         document.getElementById('btn-up').onpointerup = (e) => { e.preventDefault(); aimingDir = 0; };
-        document.getElementById('btn-down').onpointerdown = (e) => { e.preventDefault(); aimingDir = 1; };
+        document.getElementById('btn-down').onpointerdown = (e) => { e.preventDefault(); aimingDir = 1; resetIdle(); };
         document.getElementById('btn-down').onpointerup = (e) => { e.preventDefault(); aimingDir = 0; };
         document.body.onpointerup = (e) => { if(e.target.className !== 'game-btn') aimingDir = 0; if(isCharging) fire(); };
 
@@ -631,6 +687,7 @@
                 touchStart.d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             }
             camera.manual = true;
+            resetIdle();
         }, {passive: false});
 
         canvas.addEventListener('touchmove', e => {
